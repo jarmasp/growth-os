@@ -1,0 +1,15 @@
+{
+  "vault_root": "/Users/thyfus/Documents/obsidian vaults/personal/Personal/Cashea",
+  "vault": {
+    "inbox": "00-inbox",
+    "concepts": "10-concepts",
+    "tickets": "20-tickets",
+    "weekly": "30-weekly",
+    "resources": "40-resources",
+    "mocs": "50-mocs",
+    "templates": "99-templates",
+    "homework_log": "homework-log.md"
+  },
+  "concept_domains": ["backend", "system-design", "security", "infra"],
+  "codebase": "cashea-backend"
+}
