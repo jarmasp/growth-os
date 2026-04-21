@@ -4,6 +4,12 @@ ticket:
 branch: 
 status: resolved
 tags: [ticket]
+score:
+score_d1:
+score_d2:
+score_d3:
+score_d4:
+score_d5:
 ---
 
 # <% tp.file.title %>
