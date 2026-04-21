@@ -183,12 +183,82 @@ Pass to the scorer:
 - `FILES` -- key modules changed
 - `Q1` through `Q4` -- the user's exact answers verbatim from the interview
 
-Run the scorer rubric. Then:
+Run the scorer rubric. Capture the six raw integer values before writing anything:
+`D1` (0-3), `D2` (0-2), `D3` (0-2), `D4` (0-2), `D5` (0-1), `TOTAL` (D1+D2+D3+D4+D5, 0-10).
+These are raw integers, never fractions -- Dataview `average()` requires pure numerics.
+
+Then:
+
 1. Output the score block to the terminal (exactly as specified by the scorer).
-2. Append the score into the `## Reflection Score` section already written in the note file:
+
+2. Fill the `## Reflection Score` section already written in the note file:
    - Fill the table rows with per-dimension scores and one-line feedback.
    - Fill the **Análisis** paragraph with the scorer's 2-3 sentence summary.
    - Edit the file in place -- do not rewrite the whole note.
+
+3. Inject score fields into the YAML frontmatter block of the same note file. The
+   write_note step already left empty placeholders (`score:`, `score_d1:` ... `score_d5:`)
+   between `tags: [ticket]` and the closing `---`. Replace each empty placeholder with
+   the raw integer captured above. Edit in place -- do not rewrite the whole note.
+
+   Use Python to keep the YAML block robust (split at the second `---`, mutate the
+   fields, rejoin):
+
+   ```bash
+   python3 - <<'PY'
+   import re, pathlib
+   note = pathlib.Path("$NOTE_PATH")
+   text = note.read_text()
+   parts = text.split("---\n", 2)  # ["", frontmatter, body]
+   fm = parts[1]
+   fm = re.sub(r"^score:\s*$",    f"score: $TOTAL",    fm, flags=re.M)
+   fm = re.sub(r"^score_d1:\s*$", f"score_d1: $D1",    fm, flags=re.M)
+   fm = re.sub(r"^score_d2:\s*$", f"score_d2: $D2",    fm, flags=re.M)
+   fm = re.sub(r"^score_d3:\s*$", f"score_d3: $D3",    fm, flags=re.M)
+   fm = re.sub(r"^score_d4:\s*$", f"score_d4: $D4",    fm, flags=re.M)
+   fm = re.sub(r"^score_d5:\s*$", f"score_d5: $D5",    fm, flags=re.M)
+   note.write_text("---\n" + fm + "---\n" + parts[2])
+   PY
+   ```
+
+   After this substep the note's frontmatter must contain `score_d1: {D1}` etc. with
+   raw integer values.
+
+4. Append a row to the ledger at `$VAULT/reflection-scores.md`.
+
+   Resolve the ledger path:
+   ```bash
+   VAULT=$(cat ~/Documents/growth-os/config.json | python3 -c "import sys,json; c=json.load(sys.stdin); print(c['vault_root'])")
+   LEDGER="$VAULT/reflection-scores.md"
+   ```
+
+   Create-if-missing safety (prevents appending to a non-existent file): if the ledger
+   does not exist yet, create it with the canonical header before appending:
+
+   ```bash
+   if [ ! -f "$LEDGER" ]; then
+     cat > "$LEDGER" <<'EOF'
+   # Reflection Score Ledger
+
+   Append a row after every scored reflection. One row per `/reflect` run. Total = sum of D1..D5.
+
+   Dimension maxima: D1 Cognitive Depth (3) · D2 Cycle Completeness (2) · D3 Loop Depth (2) · D4 Actionability (2) · D5 Linguistic Quality (1) · Total (10)
+
+   | Date | Ticket | Total | D1 | D2 | D3 | D4 | D5 | Branch |
+   |------|--------|-------|----|----|----|----|----|--------|
+   EOF
+   fi
+   ```
+
+   Then append exactly one row using the values captured from the scorer and the
+   branch/ticket/date already resolved in earlier steps:
+
+   ```bash
+   echo "| $DATE | $TICKET_ID | $TOTAL | $D1 | $D2 | $D3 | $D4 | $D5 | $BRANCH |" >> "$LEDGER"
+   ```
+
+   Never truncate the ledger. Never rewrite existing rows. One `/reflect` run = one new
+   row. Do not emit a row if any of D1..D5 is empty (guard against scorer abort).
 
 </step>
 
