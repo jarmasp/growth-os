@@ -17,9 +17,9 @@ moc: "[[]]"
 
 > [!question] ¿Cómo funciona internamente? ¿Cómo fluye el control o los datos?
 
-## How We Use It in cashea-backend
+## How We Use It in Practice
 
-> [!question] ¿Dónde lo usamos en el código? Pon rutas de archivos o patrones concretos.
+> [!question] ¿Dónde lo usamos en el proyecto? Pon rutas, ejemplos, o patrones concretos.
 
 ## Related Concepts
 

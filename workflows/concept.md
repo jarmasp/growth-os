@@ -12,16 +12,14 @@ Existing stubs get expanded. Existing full articles get specific sections update
 
 ```bash
 VAULT=$(cat ~/Documents/growth-os/config.json | python3 -c "import sys,json; c=json.load(sys.stdin); print(c['vault_root'])")
+PROJECT_NAME=$(cat ~/Documents/growth-os/config.json | python3 -c "import sys,json; c=json.load(sys.stdin); print(c.get('project_name','your project'))")
+CONCEPT_DOMAINS=$(cat ~/Documents/growth-os/config.json | python3 -c "import sys,json; c=json.load(sys.stdin); print(c.get('concept_domains', []))")
 CONCEPTS_DIR="$VAULT/10-concepts"
 ```
 
 **Resolve slug** from `$ARGUMENTS`: lowercase, hyphens (e.g. "NestJS interceptors" → `nestjs-interceptors`).
 
-**Determine domain** from concept type:
-- `backend` — NestJS, TypeORM, patterns (guards, interceptors, pipes, modules, DI)
-- `security` — auth, JWT, guards, RBAC, sessions
-- `system-design` — architecture, CQRS, event-driven, distributed systems
-- `infra` — GCP, Cloud Run, Pub/Sub, CI/CD, secrets
+**Determine domain**: read `concept_domains` from config.json and choose the closest match. If no match, default to the first domain in the list.
 
 </step>
 
@@ -39,7 +37,7 @@ find "$CONCEPTS_DIR" -name "*{slug}*" 2>/dev/null
 
 <step name="gather_codebase_evidence">
 
-If invoked from cashea-backend (or any codebase), search for real usage:
+If a project codebase is available (check `project_name` from config.json), search for real usage:
 
 ```bash
 # Search for the concept in source
@@ -79,12 +77,10 @@ moc: "[[MOC-{Domain}]]"
 
 {Internal mechanics. Control flow, data flow, execution order. Concrete, not abstract.}
 
-## How We Use It in cashea-backend
+## How We Use It in {project_name}
 
-{Real file paths and patterns. E.g.:}
-`src/modules/auth/guards/employee.guard.ts` — implements CanActivate; checks token via AuthService.
-
-{If no codebase context: "Not yet encountered in cashea-backend — update when first used."}
+{Real file paths, patterns, or examples from the project. If no project context:
+"Not yet encountered in {project_name} — update when first used."}
 
 ## Related Concepts
 
@@ -124,7 +120,7 @@ Wikilinks added: [[x]] → [[y]]
 Confidence: {level}
 ```
 
-If wikilinks in Related Concepts don't exist as files yet, note them as candidates for `/concept {slug}`.
+If wikilinks in Related Concepts don't exist as files yet, note them as candidates for `/growth:concept {slug}`.
 
 </step>
 
@@ -133,7 +129,7 @@ If wikilinks in Related Concepts don't exist as files yet, note them as candidat
 <rules>
 
 - Always add at least 2 wikilinks in Related Concepts — no orphan nodes.
-- "How We Use It in cashea-backend" must have real paths when codebase is available.
+- "How We Use It in {project_name}" must have real paths or examples when project context is available.
 - Never leave all sections empty — fill what can be filled, mark gaps with `[ ]` in Things to Learn.
 - Confidence starts at `low`. Only `medium` or `high` with evidence.
 

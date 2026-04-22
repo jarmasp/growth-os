@@ -1,4 +1,4 @@
-Write a ticket reflection note in the Obsidian vault for the current branch.
+Write a ticket reflection note in the Obsidian vault. Will ask for branch, ticket ID, and description before starting.
 
 Load config and follow the full workflow:
 

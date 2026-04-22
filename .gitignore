@@ -1,12 +1,6 @@
-# Personal planning data — gitignore by default for shared/public repos
-# Remove entries below if you want to track your own milestone history
-.planning/STATE.md
-.planning/MILESTONES.md
-.planning/RETROSPECTIVE.md
-
-# Keep architecture docs and roadmap (useful for forks)
-# .planning/PROJECT.md
-# .planning/ROADMAP.md
+# Personal data — never committed to the public repo
+config.json
+.planning/
 
 # OS artifacts
 .DS_Store

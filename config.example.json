@@ -1,0 +1,37 @@
+{
+  "vault_root": "/Users/yourname/path/to/your/obsidian/vault",
+  "vault_name": "YourVaultName",
+  "vault": {
+    "inbox": "00-inbox",
+    "concepts": "10-concepts",
+    "tickets": "20-tickets",
+    "weekly": "30-weekly",
+    "resources": "40-resources",
+    "mocs": "50-mocs",
+    "templates": "99-templates",
+    "homework_log": "homework-log.md",
+    "project_docs": "60-project"
+  },
+  "concept_domains": ["backend", "system-design", "security", "infra"],
+  "project_name": "your-project-name",
+  "project_docs_subfolders": ["adr", "modules", "domain", "business", "runbooks"],
+  "user_profile": {
+    "name": "Your Name",
+    "role": "Your Role",
+    "company": "Your Company",
+    "primary_tools": ["tool1", "tool2"],
+    "experience_years": 0,
+    "dreyfus_level": "novice | advanced-beginner | competent | proficient | expert",
+    "primary_goal": "What you want to achieve in 12-18 months",
+    "motivation_type": "mastery | autonomy | relatedness | impact | instrumental",
+    "blockers": ["blocker1", "blocker2"],
+    "competing_commitment": null,
+    "learning_style": "doing | structured | exploratory | social | teaching",
+    "kolb_skipped_stage": "CE | RO | AC | AE | null",
+    "craft_motivation": "Why this craft",
+    "flow_signal": "Activity that produces flow, or null",
+    "practice_vehicle": "work | personal-projects | both",
+    "priority_domains": ["domain1", "domain2"],
+    "identified_tension": null
+  }
+}

@@ -12,9 +12,10 @@ no separate learning time. The work IS the practice.
 
 ```
 Ticket opens
-  → /reflect after coding: write What Was Hard, What I Learned, Concepts Encountered
-  → /concept {name}: expand any concept that felt unclear into a full article
-  → /weekly at sprint end: surface gaps, rate domains, write capability assertion
+  → /growth:premortem before coding: predict failure points, capture assumptions
+  → /growth:reflect after coding: completes the draft; scores the prediction vs reality loop
+  → /growth:concept {name}: expand any concept that felt unclear into a full article
+  → /growth:weekly at sprint end: surface gaps, rate domains, write capability assertion
 ```
 
 Over time: knowledge graph grows, pattern gaps shrink, self-doubt reduces.
@@ -24,7 +25,7 @@ Over time: knowledge graph grows, pattern gaps shrink, self-doubt reduces.
 ## What It Builds On
 
 - **Obsidian** — local-first knowledge graph with Dataview, Templater, Tasks plugins
-- **Claude Code** — three slash commands that write directly to your vault
+- **Claude Code** — four slash commands that write directly to your vault
 - **Your actual work** — every ticket is a learning artifact, not extra work
 
 ---
@@ -37,46 +38,35 @@ Over time: knowledge graph grows, pattern gaps shrink, self-doubt reduces.
 git clone {repo-url} ~/Documents/growth-os
 ```
 
-**2. Configure your vault path**
+**2. Install commands**
+
+```bash
+bash install.sh
+```
+
+This symlinks `commands/growth/*.md` into `~/.claude/commands/growth/` so the slash commands
+are available globally in Claude Code as `/growth:*`.
+
+**3. Configure your vault path**
 
 Edit `config.json`:
 
 ```json
 {
   "vault_root": "/path/to/your/obsidian/vault/subfolder",
-  ...
+  "vault_name": "YourVaultName",
+  "project_name": "your-project-name"
 }
 ```
 
-**3. Set up vault structure**
-
-Your Obsidian vault needs these folders:
+**4. Run onboarding**
 
 ```
-00-inbox/
-10-concepts/
-  backend/
-  system-design/
-  security/
-  infra/
-20-tickets/
-30-weekly/
-40-resources/
-50-mocs/
-99-templates/
-homework-log.md
+/growth:onboard
 ```
 
-Copy templates from `templates/` into your vault's `99-templates/` directory.
-
-**4. Install Claude Code commands**
-
-```bash
-bash install.sh
-```
-
-This symlinks `commands/*.md` into `~/.claude/commands/` so the slash commands are
-available globally in Claude Code.
+Runs a 5-phase adaptive interview, saves your profile to `config.json`, and scaffolds
+your Obsidian vault with all required folders, templates, and MOC files.
 
 ---
 
@@ -84,9 +74,13 @@ available globally in Claude Code.
 
 | Command | When to use | Writes to |
 |---------|-------------|-----------|
-| `/reflect` | After resolving a ticket | `20-tickets/{ticket}.md` |
-| `/concept {name}` | When a pattern felt unclear | `10-concepts/{domain}/{slug}.md` |
-| `/weekly` | End of sprint / every Friday | `30-weekly/{YYYY-[W]WW}.md` |
+| `/growth:onboard` | Once on setup, re-run to update profile | `config.json` + vault scaffolding |
+| `/growth:premortem` | Before coding starts on a ticket | `20-tickets/{ticket}-draft.md` (status: in-progress) |
+| `/growth:reflect` | After resolving a ticket | `20-tickets/{ticket}.md` (completes draft if one exists) |
+| `/growth:concept {name}` | When a pattern felt unclear | `10-concepts/{domain}/{slug}.md` |
+| `/growth:weekly` | End of sprint / every Friday | `30-weekly/{YYYY-[W]WW}.md` |
+
+See [HOW-TO-USE.md](./HOW-TO-USE.md) for full command documentation and configuration reference.
 
 ---
 
@@ -105,12 +99,15 @@ Three recurring drills tracked in `homework-log.md`:
 ## Repository Structure
 
 ```
-commands/         — Claude Code slash commands (source of truth)
-workflows/        — Full orchestration docs loaded by commands
-templates/        — Reference copies of Obsidian note templates
-.planning/        — Personal milestone planning (gitignored by default)
-config.json       — Vault path and settings (edit per user)
-install.sh        — Links commands to ~/.claude/commands/
+commands/
+  growth/       — Claude Code slash commands (source of truth)
+workflows/      — Full orchestration docs loaded by commands
+agents/         — Scoring rubric agents
+templates/      — Reference copies of Obsidian note templates
+.planning/      — Personal milestone planning (gitignored by default)
+config.json     — Vault path and settings (edit per user)
+install.sh      — Links commands to ~/.claude/commands/growth/
+HOW-TO-USE.md   — Full installation and usage guide
 ```
 
 ---

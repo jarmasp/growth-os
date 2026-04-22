@@ -12,6 +12,15 @@ score_d4:
 score_d5:
 ---
 
+<!-- Reflection score fields — auto-filled by /growth:reflect after the score step:
+  score    = total (0–10)
+  score_d1 = Cognitive Depth (0–3)
+  score_d2 = Cycle Completeness (0–2)
+  score_d3 = Loop Depth (0–2)
+  score_d4 = Actionability (0–2)
+  score_d5 = Linguistic Quality (0–1)
+-->
+
 # <% tp.file.title %>
 
 ## Pre-mortem
