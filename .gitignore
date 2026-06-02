@@ -1,6 +1,11 @@
 # Personal data — never committed to the public repo
 config.json
+config.*.json
+!config.example.json
 .planning/
+
+# Per-session work notes (personal)
+SESSION-*.md
 
 # OS artifacts
 .DS_Store
