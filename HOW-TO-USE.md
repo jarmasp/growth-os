@@ -15,7 +15,7 @@ projects, no separate learning time. The work IS the practice.
 | Dependency | Purpose | Install |
 |------------|---------|---------|
 | [Obsidian](https://obsidian.md) | Local-first knowledge graph | Free download |
-| [Claude Code](https://claude.ai/code) | CLI that runs the growth commands | `npm install -g @anthropic-ai/claude-code` |
+| [Claude Code](https://claude.ai/code) **or** [Cursor](https://cursor.com) | Agent that runs the growth commands | `npm install -g @anthropic-ai/claude-code`, or Cursor's own installer |
 
 ### Obsidian Plugins
 
@@ -35,7 +35,7 @@ These are installed and configured by `/growth:onboard` — no manual setup need
 ### 1. Clone
 
 ```bash
-git clone <repo-url> ~/Documents/growth-os
+git clone git@github.com:jarmasp/growth-os.git ~/Documents/growth-os
 ```
 
 ### 2. Install commands
@@ -64,9 +64,21 @@ Done. Commands available in Claude Code:
 Next step: run /growth:onboard in Claude Code to set up your profile and scaffold your Obsidian vault.
 ```
 
+Using Cursor instead (or as well)?
+
+```bash
+bash ~/Documents/growth-os/cursor/install-cursor.sh
+```
+
+Symlinks the five skills, the `growth-os` rule, and the slash commands into `~/.cursor/`.
+
 ### 3. Configure your vault path
 
-Edit `config.json`:
+Copy the example config, then edit it:
+
+```bash
+cp ~/Documents/growth-os/config.example.json ~/Documents/growth-os/config.json
+```
 
 ```json
 {
@@ -262,6 +274,10 @@ templates/
   concept-article.md    — Obsidian template for concept articles
   weekly-review.md      — Obsidian template for weekly reviews
   adr.md                — Obsidian template for ADRs
+cursor/
+  install-cursor.sh     — Installs skills/rule/commands into ~/.cursor/
+  rules/growth-os.mdc    — Cursor rule pointing at the workflows
+  skills/growth-*/       — One skill per command, same orchestration as commands/growth/
 .planning/              — Milestone planning artifacts (gitignored)
 config.json             — Vault path and user settings
 install.sh              — Installs commands to ~/.claude/commands/growth/

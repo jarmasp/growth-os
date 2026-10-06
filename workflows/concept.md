@@ -40,8 +40,10 @@ find "$CONCEPTS_DIR" -name "*{slug}*" 2>/dev/null
 If a project codebase is available (check `project_name` from config.json), search for real usage:
 
 ```bash
-# Search for the concept in source
-grep -r "{keyword}" src/ --include="*.ts" -l 2>/dev/null | head -8
+# Search for the concept in source — language-agnostic, excludes common dep/build noise
+grep -rn "{keyword}" . \
+  --exclude-dir={.git,node_modules,dist,build,vendor,.venv,target} \
+  -l 2>/dev/null | head -8
 ```
 
 Read 1–2 of the most relevant files to extract:

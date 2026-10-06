@@ -55,7 +55,7 @@ Over time: reflection scores trend up · the knowledge graph densifies · self-d
 **1. Clone**
 
 ```bash
-git clone <repo-url> ~/Documents/growth-os
+git clone git@github.com:jarmasp/growth-os.git ~/Documents/growth-os
 ```
 
 **2. Install the commands**
@@ -148,6 +148,7 @@ commands/growth/   Claude Code slash commands (source of truth)
 workflows/         Full orchestration docs loaded by each command
 agents/            Scoring-rubric agents
 templates/         Reference copies of the Obsidian note templates
+cursor/            Cursor integration — skills, rule, slash commands, installer
 install.sh         Links commands into ~/.claude/commands/growth/
 config.example.json  Copy to config.json and edit (config.json is gitignored)
 HOW-TO-USE.md      Full installation & usage guide
