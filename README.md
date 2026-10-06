@@ -107,8 +107,13 @@ multi-turn (the model picks each next question); the rest call the model at most
 statelessly. Add `growth-os` to your `PATH` and it's just `growth <command>`.
 `--agent claude|codex|print` picks the backend (`print` dumps the assembled prompt to
 stdout instead of calling anything — paste it into any model, anywhere; not available
-for `onboard`, which needs a real back-and-forth). `growth doctor` checks your config
-and backends; `growth init` writes `~/.growth-os/config.json` for you.
+for `onboard`, which needs a real back-and-forth). `growth doctor` checks your config,
+backends, and index; `growth init` writes `~/.growth-os/config.json` for you.
+
+**`growth index` / `growth search "{query}"`** build and query a local hybrid
+(keyword + semantic) store over your vault — `pip install -r requirements-index.txt`
+for the semantic half, or skip it and get keyword search alone. `reflect` uses it
+internally to pick relevant `[[concept]]` links instead of guessing from filenames.
 
 The `/growth:*` slash commands still work in Claude Code / Cursor — each one now just
 points you at the CLI instead of running the workflow inline.
@@ -124,6 +129,8 @@ points you at the CLI instead of running the workflow inline.
 | `growth reflect` | After resolving a ticket | `20-tickets/{ticket}.md` |
 | `growth concept "{name}"` | When a pattern felt unclear | `10-concepts/{domain}/{slug}.md` |
 | `growth weekly` | End of sprint / every Friday | `30-weekly/{YYYY-[W]WW}.md` |
+| `growth index` | After new notes, or anytime | `~/.growth-os/index.db` |
+| `growth search "{query}"` | When you want to find something | terminal output only |
 
 📖 Full command docs & configuration reference: **[HOW-TO-USE.md](./HOW-TO-USE.md)**
 
@@ -166,6 +173,7 @@ templates/         Reference copies of the Obsidian note templates
 cursor/            Cursor integration — skills, rule, slash commands, installer
 install.sh         Links commands into ~/.claude/commands/growth/
 config.example.json  Copy to config.json and edit (config.json is gitignored)
+requirements-index.txt  Optional: sqlite-vec + fastembed, for semantic search
 HOW-TO-USE.md      Full installation & usage guide
 ```
 

@@ -132,8 +132,35 @@ editing those files is the only thing needed to change behavior.
 | `growth concept "{name}"` | **1**, stateless | One call: write or expand the article, grounded in `grep` evidence from the current directory |
 | `growth weekly` | **1–2** | One call scores the week + interprets homework-log.md + flags learning gaps (same economy as reflect); a second, separate call triages `00-inbox/` if it's non-empty |
 | `growth onboard` | **multi-turn** | The one genuinely adaptive interview — the model picks each next question from the conversation so far. Runs once per person, or rarely on profile updates, so this doesn't carry the same per-ticket cost pressure as the others |
-| `growth doctor` | 0 | Reports which config is in use, vault state, and which backends (`claude`/`codex`/custom) are on `PATH` |
+| `growth index` | 0 | Rebuilds the local knowledge store from the vault (tickets, concepts, weeklies) |
+| `growth search "{query}"` | 0 | Hybrid keyword + semantic search over the indexed vault and past sessions |
+| `growth doctor` | 0 | Reports which config is in use, vault state, index state, and which backends (`claude`/`codex`/custom) are on `PATH` |
 | `growth init` | 0 | Writes `~/.growth-os/config.json` from `config.example.json` if one doesn't exist yet |
+
+### Knowledge store (v3.0 Phase 2)
+
+`growth index` builds a local store at `~/.growth-os/index.db` — one SQLite file,
+FTS5 (keyword) and [sqlite-vec](https://github.com/asg017/sqlite-vec) (semantic)
+side by side, fused with reciprocal rank fusion. `growth search` queries it directly;
+`growth reflect` queries it internally to pick relevant `[[concept]]` wikilinks for
+the note, instead of handing the model every slug in every domain folder unfiltered.
+
+It's stdlib-only by default — `sqlite-vec`/`fastembed` are optional
+(`pip install -r requirements-index.txt`), and everything degrades to keyword-only
+search without them rather than failing (`growth doctor` reports which mode is active).
+The embedding model (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
+~220MB) downloads once, on first use, and is multilingual on purpose — reflections in
+Spanish need to match concepts or rubric language in English.
+
+> **Corporate-managed laptop?** The first `growth index` with vector search enabled
+> may fail with `CERTIFICATE_VERIFY_FAILED` if your company's MDM root certificate
+> lives in the OS trust store (which `curl` uses) but not Python's own cert bundle.
+> Fix: `pip install pip-system-certs`. Not a growth-os bug — a Python-on-managed-devices
+> gotcha, seen firsthand on a Cashea laptop while building this.
+
+A completed `reflect` or `weekly` run is also written into a `sessions` collection
+automatically — nothing consumes it yet (that's Phase 4), but the data is there from
+day one instead of needing a backfill later.
 
 **`--agent <name>`** picks the backend, on every command except `onboard`:
 - `claude` (default) — shells out to `claude -p --output-format json --setting-sources ""`,
@@ -327,6 +354,9 @@ growthos/
   weekly.py            — score-trend averaging, skill-domain table, note composition
   inbox.py             — inbox triage: read, build the model's categorization prompt, execute the plan
   onboard.py           — the multi-turn adaptive interview loop, vault scaffold, profile note
+  store.py             — SQLite FTS5 + sqlite-vec store, hybrid search (RRF), zero-hit log
+  embed.py             — fastembed wrapper (optional dep; store.py degrades without it)
+  ingest.py            — vault -> store indexing, session logging, concept retrieval
   tokens.py            — per-call token/cost logging to ~/.growth-os/logs/tokens.jsonl
 commands/
   growth/

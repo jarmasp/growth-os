@@ -1,0 +1,16 @@
+# Optional. growth-os's core (premortem/reflect/concept/weekly/onboard) is
+# stdlib-only and works without this. Install these only for `growth index` /
+# `growth search` — semantic (vector) search over your vault and sessions.
+#
+#   pip install -r requirements-index.txt
+#
+# Without them, `growth index` / `growth search` still work on FTS5 keyword
+# search alone (see `growth doctor`).
+#
+# On a corporate-managed laptop behind TLS inspection (MDM root cert in the
+# macOS/Windows system trust store but not Python's own cert bundle), the first
+# `growth index` may fail downloading the embedding model with
+# CERTIFICATE_VERIFY_FAILED. Fix: pip install pip-system-certs
+
+sqlite-vec
+fastembed

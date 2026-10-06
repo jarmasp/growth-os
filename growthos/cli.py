@@ -1,14 +1,16 @@
-"""growth — the CLI entry point. Ports workflows/premortem.md and workflows/reflect.md
-step for step: same questions (parsed from the markdown, not duplicated), same file
-structure, same rules. The interview runs in Python; the model is called at most once
-per run, only where real judgment is needed (reflect's scoring + premortem inference).
+"""growth — the CLI entry point. Each growth:* command's shape matches the
+judgment it actually needs: premortem/reflect/weekly's fixed Q&A is parsed
+straight out of workflows/*.md (not duplicated); concept/reflect/weekly make
+one stateless model call; onboard alone is multi-turn (its interview is
+genuinely adaptive). index/search (Phase 2) add a local FTS5+vector store over
+the vault and every completed session — see growthos/store.py.
 """
 import argparse
 import shutil
 import sys
 
-from . import (backend, concept as concept_mod, config, inbox as inbox_mod, interview,
-               onboard as onboard_mod, prompt, tokens, vault, weekly)
+from . import (backend, concept as concept_mod, config, inbox as inbox_mod, ingest, interview,
+               onboard as onboard_mod, prompt, store, tokens, vault, weekly)
 
 
 def _confirm(prompt_text: str) -> bool:
@@ -87,7 +89,6 @@ def cmd_reflect(args, cfg: dict) -> None:
     draft = vault.detect_draft(cfg, ticket_id)
     draft_found = draft is not None
     git_ctx = vault.gather_git_context(branch)
-    concepts = vault.scan_concepts(cfg)
 
     print(f"\nBranch: {branch}\nTicket: {ticket_id} -- {short_description}")
     if git_ctx["diff_stat"]:
@@ -167,6 +168,12 @@ def cmd_reflect(args, cfg: dict) -> None:
         assumptions_section = ("Ticket was unambiguous -- no critical assumptions identified."
                                 if answers["q1"].strip().upper() == "N/A" else answers["q1"])
 
+    # Retrieval replaces the old ls-based scan: query the index with what the
+    # ticket was actually about, now that the interview has given us real content
+    # to search on, instead of handing the model every concept slug unfiltered.
+    concept_query = f"{short_description} {answers['q2']} {answers['q3']}"
+    concepts = ingest.concept_slugs_for(cfg, concept_query)
+
     vault.write_reflection(
         cfg, path=target_path, branch=branch, ticket_id=ticket_id,
         short_description=short_description,
@@ -174,6 +181,11 @@ def cmd_reflect(args, cfg: dict) -> None:
         answers=answers, concepts=concepts, scores=scores,
     )
     vault.append_ledger(cfg, ticket_id=ticket_id, branch=branch, scores=scores)
+    ingest.add_session(
+        kind="reflect", identifier=ticket_id,
+        content=f"{short_description}\n\n{answers['q2']}\n\n{answers['q3']}\n\n{scores['analysis']}",
+        metadata={"ticket": ticket_id, "branch": branch, "score": scores["total"]},
+    )
 
     print(f"""
 ─────────────────────────────────────────────────────────────────────────────
@@ -317,6 +329,11 @@ def cmd_weekly(args, cfg: dict) -> None:
 
     weekly.compose_and_write(cfg, path=note_path, tickets=tickets, trend=trend,
                               answers=answers, scores=scores)
+    ingest.add_session(
+        kind="weekly", identifier=weekly.week_id(),
+        content=f"{answers['w1']}\n\n{answers['w2']}\n\n{answers['w3']}\n\n{scores['analysis']}",
+        metadata={"week": weekly.week_id(), "score": scores["total"]},
+    )
 
     print(f"""
 ─────────────────────────────────────────────────────────────────────────────
@@ -482,6 +499,42 @@ def cmd_doctor(args) -> None:
         print(f"  {name} (custom): {'found' if shutil.which(argv[0]) else 'NOT on PATH -- ' + argv[0]}")
     print("  print: always available (no model call)")
 
+    print("\nKnowledge store:")
+    st = store.stats()
+    print(f"  Index: {st['path']}")
+    print(f"  Vector search: {'available (' + st['embed_model'] + ')' if st['vec_available'] else 'NOT available -- FTS5 keyword search only (pip install -r requirements-index.txt)'}")
+    for collection in ("vault", "sessions", "corpus"):
+        print(f"  {collection}: {st['counts'].get(collection, 0)} documents")
+    if store.ZERO_HITS_LOG.exists():
+        n = sum(1 for _ in store.ZERO_HITS_LOG.open())
+        print(f"  Zero-hit queries logged: {n} (see {store.ZERO_HITS_LOG})")
+
+
+def cmd_index(args, cfg: dict) -> None:
+    print("Indexing vault...")
+    counts = ingest.index_vault(cfg)
+    print(f"  Tickets: {counts['tickets']}")
+    print(f"  Concepts: {counts['concepts']}")
+    print(f"  Weekly reviews: {counts['weekly']}")
+    st = store.stats()
+    if not st["vec_available"]:
+        print("\n(Vector search unavailable -- indexed with FTS5 keyword search only. "
+              "`pip install -r requirements-index.txt` for semantic search too.)")
+    print(f"\nIndex: {st['path']}")
+
+
+def cmd_search(args, cfg: dict) -> None:
+    results = store.search(args.query, collection=args.collection, k=args.k)
+    if not results:
+        print(f"No results for: {args.query!r}"
+              + (f" (collection={args.collection})" if args.collection else ""))
+        print("Logged to the zero-hit tripwire." if store.ZERO_HITS_LOG.exists() else "")
+        return
+    for i, r in enumerate(results, start=1):
+        snippet = " ".join(r["content"].split())[:160]
+        print(f"{i}. [{r['collection']}] {r['source']} (score={r['fused_score']:.4f})")
+        print(f"   {snippet}...\n")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="growth", description="Growth OS CLI")
@@ -503,8 +556,15 @@ def main() -> None:
     p_onb = sub.add_parser("onboard", help="Adaptive profile interview + vault scaffold")
     p_onb.add_argument("--agent", default=None, help="claude | codex | <custom from config> (no print)")
 
+    p_idx = sub.add_parser("index", help="Rebuild the vault index (FTS5 + vector search)")
+
+    p_search = sub.add_parser("search", help="Hybrid search over the indexed vault/sessions")
+    p_search.add_argument("query")
+    p_search.add_argument("--collection", default=None, choices=["vault", "sessions", "corpus"])
+    p_search.add_argument("-k", type=int, default=10)
+
     sub.add_parser("init", help="Create ~/.growth-os/config.json from the example")
-    sub.add_parser("doctor", help="Diagnose config + backends")
+    sub.add_parser("doctor", help="Diagnose config + backends + index")
 
     args = parser.parse_args()
 
@@ -521,7 +581,9 @@ def main() -> None:
         print(f"Config error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if args.agent is None:
+    # index/search don't take --agent (no model call) -- hasattr avoids an
+    # AttributeError on those rather than giving every subparser a dead flag.
+    if hasattr(args, "agent") and args.agent is None:
         args.agent = cfg.get("default_backend", "claude")
 
     if args.command == "premortem":
@@ -534,6 +596,10 @@ def main() -> None:
         cmd_weekly(args, cfg)
     elif args.command == "onboard":
         cmd_onboard(args, cfg)
+    elif args.command == "index":
+        cmd_index(args, cfg)
+    elif args.command == "search":
+        cmd_search(args, cfg)
 
 
 if __name__ == "__main__":
