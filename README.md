@@ -67,6 +67,14 @@ bash ~/Documents/growth-os/install.sh
 Symlinks `commands/growth/*.md` into `~/.claude/commands/growth/` so the commands are
 available globally in Claude Code as `/growth:*`.
 
+Using Cursor instead (or as well)? Also run:
+
+```bash
+bash ~/Documents/growth-os/cursor/install-cursor.sh
+```
+
+Symlinks the five skills, the `growth-os` rule, and the slash commands into `~/.cursor/`.
+
 **3. Point it at your vault**
 
 ```bash

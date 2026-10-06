@@ -1,0 +1,30 @@
+---
+description: Growth OS — personal engineering growth loop on top of real work (Obsidian vault + ticket reflections)
+alwaysApply: false
+---
+
+# Growth OS
+
+Personal growth system. The work IS the practice.
+
+## Home
+
+- Repo: `$HOME/Documents/growth-os` (override with `$GROWTH_OS_HOME`)
+- Config: `$GROWTH_OS_HOME/config.json` — read before any vault write
+- Workflows: `$GROWTH_OS_HOME/workflows/`
+
+## Commands (Cursor)
+
+| Trigger | Skill / command |
+|---------|-----------------|
+| Before coding | `growth-premortem` or `/growth-premortem` |
+| After ticket done | `growth-reflect` or `/growth-reflect` |
+| Expand a pattern | `growth-concept` or `/growth-concept` |
+| Sprint end | `growth-weekly` or `/growth-weekly` |
+| First-time setup | `growth-onboard` or `/growth-onboard` |
+
+When the user invokes a growth workflow, load the matching skill and follow its workflow file end-to-end.
+
+## Separation
+
+Growth OS builds the engineer; the codebase builds the software. Do not mix vault writes into unrelated coding tasks unless the user explicitly asks.
