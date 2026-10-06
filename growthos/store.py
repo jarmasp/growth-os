@@ -3,7 +3,8 @@ and sqlite-vec (semantic) side by side, fused with reciprocal rank fusion (RRF).
 
 Collections: 'vault' (notes — tickets, concepts, weeklies), 'sessions' (every
 completed reflect/weekly run, so the next one can recall "you hit this before"),
-'corpus' (Phase 3 — books; the schema already supports it, just unused for now).
+'corpus' (framework writeups + personal docs, chunked — see growthos/corpus.py;
+metadata.scope is 'shared' (shipped, everyone gets it) or 'personal' (yours only)).
 
 Graceful by design, not as an afterthought: a fresh install has zero vault notes
 and no sqlite-vec/fastembed installed yet. Every function here degrades to
@@ -11,6 +12,7 @@ FTS5-only, or to an empty result, rather than raising — `reflect`/`weekly` mus
 complete end-to-end either way. `growth doctor` reports what's actually active.
 """
 import json
+import re
 import sqlite3
 import struct
 import time
@@ -119,6 +121,19 @@ def add_document(db: sqlite3.Connection, *, collection: str, source: str, conten
     return doc_id
 
 
+def _min_terms_required(n_terms: int) -> int:
+    # ponytail: an OR-of-all-terms query is fine for a short deliberate search
+    # ("guard chains", "rate limiter") -- both/all terms usually need to match
+    # anyway for the doc to rank well. It breaks on a long natural-language
+    # query: a single incidental word out of nine (a short Spanish/English
+    # function word FTS5's tokenizer still treats as a real token -- "hay",
+    # "cuando" -- missed by STOPWORDS) can out-rank nothing-else-matched and
+    # win on pure RRF rank, since rank doesn't see how *weak* that one match
+    # was. Requiring a minimum overlap scales with query length instead of
+    # chasing stopwords one coincidence at a time.
+    return 1 if n_terms <= 2 else max(2, n_terms // 4)
+
+
 def _fts_search(db: sqlite3.Connection, query: str, collection: str | None, limit: int) -> list[dict]:
     terms = [t for t in query.replace('"', ' ').split() if t and t.lower() not in STOPWORDS]
     if not terms:
@@ -135,11 +150,21 @@ def _fts_search(db: sqlite3.Connection, query: str, collection: str | None, limi
         sql += " AND documents.collection = ?"
         params.append(collection)
     sql += " ORDER BY bm25(documents_fts) LIMIT ?"
-    params.append(limit)
+    params.append(limit * 3)  # overfetch -- the overlap filter below drops some
     try:
-        return [dict(r) for r in db.execute(sql, params)]
+        rows = [dict(r) for r in db.execute(sql, params)]
     except sqlite3.OperationalError:
         return []  # malformed FTS query (stray syntax token) -- degrade to no keyword hits
+
+    min_overlap = _min_terms_required(len(terms))
+    term_patterns = [re.compile(rf"\b{re.escape(t.lower())}\b") for t in terms]
+
+    def overlap(content: str) -> int:
+        lower = content.lower()
+        return sum(1 for pat in term_patterns if pat.search(lower))
+
+    kept = [r for r in rows if overlap(r["content"]) >= min_overlap]
+    return kept[:limit]
 
 
 def _vec_search(db: sqlite3.Connection, query: str, collection: str | None, limit: int) -> list[dict]:
@@ -211,9 +236,13 @@ def stats() -> dict:
         counts = {r["collection"]: r["n"] for r in db.execute(
             "SELECT collection, COUNT(*) AS n FROM documents GROUP BY collection"
         )}
+        corpus_scopes = {r["scope"]: r["n"] for r in db.execute(
+            "SELECT json_extract(metadata, '$.scope') AS scope, COUNT(*) AS n "
+            "FROM documents WHERE collection = 'corpus' GROUP BY scope"
+        )}
     finally:
         db.close()
     return {
-        "path": str(DB_PATH), "counts": counts,
+        "path": str(DB_PATH), "counts": counts, "corpus_scopes": corpus_scopes,
         "vec_available": vec_available(), "embed_model": embed.MODEL_NAME if vec_available() else None,
     }

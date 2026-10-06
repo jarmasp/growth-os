@@ -115,6 +115,14 @@ backends, and index; `growth init` writes `~/.growth-os/config.json` for you.
 for the semantic half, or skip it and get keyword search alone. `reflect` uses it
 internally to pick relevant `[[concept]]` links instead of guessing from filenames.
 
+**`growth index --corpus` / `growth ask "{query}"`** add a corpus: 16 original
+writeups of the frameworks the agents already apply (Kolb, Ericsson, SDT,
+Immunity to Change, Dreyfus...) shipped with the repo — distilled and cited,
+never the source books' own text, same delivery as `workflows/`/`agents/` — plus
+whatever you point `personal_corpus_dir` at (your own books/docs, `.epub`/`.pdf`
+supported, gitignored, local only). See [HOW-TO-USE.md](./HOW-TO-USE.md) for the
+full design.
+
 The `/growth:*` slash commands still work in Claude Code / Cursor — each one now just
 points you at the CLI instead of running the workflow inline.
 
@@ -129,8 +137,9 @@ points you at the CLI instead of running the workflow inline.
 | `growth reflect` | After resolving a ticket | `20-tickets/{ticket}.md` |
 | `growth concept "{name}"` | When a pattern felt unclear | `10-concepts/{domain}/{slug}.md` |
 | `growth weekly` | End of sprint / every Friday | `30-weekly/{YYYY-[W]WW}.md` |
-| `growth index` | After new notes, or anytime | `~/.growth-os/index.db` |
+| `growth index [--corpus]` | After new notes, or anytime | `~/.growth-os/index.db` |
 | `growth search "{query}"` | When you want to find something | terminal output only |
+| `growth ask "{query}"` | When you want a grounded coaching passage | terminal output only |
 
 📖 Full command docs & configuration reference: **[HOW-TO-USE.md](./HOW-TO-USE.md)**
 
@@ -170,15 +179,19 @@ commands/growth/   Claude Code slash commands — now one-line pointers at the C
 workflows/         Full orchestration docs — the actual asset; growthos/ just runs them
 agents/            Scoring-rubric agents — read verbatim by growthos/prompt.py, never duplicated
 templates/         Reference copies of the Obsidian note templates
+corpus/            Shipped framework writeups (scope: shared) — see HOW-TO-USE.md
 cursor/            Cursor integration — skills, rule, slash commands, installer
 install.sh         Links commands into ~/.claude/commands/growth/
 config.example.json  Copy to config.json and edit (config.json is gitignored)
-requirements-index.txt  Optional: sqlite-vec + fastembed, for semantic search
+requirements-index.txt   Optional: sqlite-vec + fastembed, for semantic search
+requirements-corpus.txt  Optional: ebooklib + pypdf, for .epub/.pdf in your personal corpus
 HOW-TO-USE.md      Full installation & usage guide
 ```
 
 > **Privacy:** `config.json`, project-specific configs (`config.*.json`), `.planning/`, and
 > `SESSION-*.md` notes are gitignored — your profile and work notes never leave your machine.
+> `personal_corpus_dir` points at a folder of your own choosing, outside this repo entirely —
+> nothing about your personal corpus is ever written here.
 
 ---
 

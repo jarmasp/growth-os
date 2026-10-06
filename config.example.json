@@ -17,6 +17,7 @@
   "project_docs_subfolders": ["adr", "modules", "domain", "business", "runbooks"],
   "default_backend": "claude",
   "backends": {},
+  "personal_corpus_dir": null,
   "user_profile": {
     "name": "Your Name",
     "role": "Your Role",

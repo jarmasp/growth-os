@@ -1,0 +1,11 @@
+# Optional. Only needed to index .epub / .pdf files into your personal corpus
+# (set personal_corpus_dir in config.json). Plain .md / .txt files need nothing
+# beyond the stdlib -- this is purely for book-shaped files.
+#
+#   pip install -r requirements-corpus.txt
+#
+# See also requirements-index.txt (semantic search) -- a separate concern:
+# you can index a corpus with FTS5 keyword search alone, with or without this.
+
+ebooklib
+pypdf

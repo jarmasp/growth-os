@@ -9,8 +9,8 @@ import argparse
 import shutil
 import sys
 
-from . import (backend, concept as concept_mod, config, inbox as inbox_mod, ingest, interview,
-               onboard as onboard_mod, prompt, store, tokens, vault, weekly)
+from . import (backend, concept as concept_mod, config, corpus as corpus_mod, inbox as inbox_mod,
+               ingest, interview, onboard as onboard_mod, prompt, store, tokens, vault, weekly)
 
 
 def _confirm(prompt_text: str) -> bool:
@@ -503,8 +503,18 @@ def cmd_doctor(args) -> None:
     st = store.stats()
     print(f"  Index: {st['path']}")
     print(f"  Vector search: {'available (' + st['embed_model'] + ')' if st['vec_available'] else 'NOT available -- FTS5 keyword search only (pip install -r requirements-index.txt)'}")
-    for collection in ("vault", "sessions", "corpus"):
+    for collection in ("vault", "sessions"):
         print(f"  {collection}: {st['counts'].get(collection, 0)} documents")
+    corpus_n = st["counts"].get("corpus", 0)
+    scopes = st.get("corpus_scopes", {})
+    print(f"  corpus: {corpus_n} chunks (shared: {scopes.get('shared', 0)}, personal: {scopes.get('personal', 0)})")
+    personal_dir = cfg.get("personal_corpus_dir")
+    print(f"  personal_corpus_dir: {personal_dir or '(not set)'}")
+    try:
+        import ebooklib, pypdf  # noqa: F401
+        print("  epub/pdf parsing: available")
+    except ImportError:
+        print("  epub/pdf parsing: NOT available (pip install -r requirements-corpus.txt)")
     if store.ZERO_HITS_LOG.exists():
         n = sum(1 for _ in store.ZERO_HITS_LOG.open())
         print(f"  Zero-hit queries logged: {n} (see {store.ZERO_HITS_LOG})")
@@ -516,6 +526,14 @@ def cmd_index(args, cfg: dict) -> None:
     print(f"  Tickets: {counts['tickets']}")
     print(f"  Concepts: {counts['concepts']}")
     print(f"  Weekly reviews: {counts['weekly']}")
+
+    if args.corpus:
+        print("\nIndexing corpus...")
+        corpus_counts = corpus_mod.index_corpus(cfg)
+        print(f"  Shared (shipped with growth-os): {corpus_counts['shared_chunks']} chunks")
+        print(f"  Personal ({cfg.get('personal_corpus_dir') or 'not configured'}): "
+              f"{corpus_counts['personal_chunks']} chunks")
+
     st = store.stats()
     if not st["vec_available"]:
         print("\n(Vector search unavailable -- indexed with FTS5 keyword search only. "
@@ -534,6 +552,22 @@ def cmd_search(args, cfg: dict) -> None:
         snippet = " ".join(r["content"].split())[:160]
         print(f"{i}. [{r['collection']}] {r['source']} (score={r['fused_score']:.4f})")
         print(f"   {snippet}...\n")
+
+
+def cmd_ask(args, cfg: dict) -> None:
+    """growth search --collection corpus, with citation-formatted output --
+    the corpus is meant to be quoted from, not just located."""
+    results = store.search(args.query, collection="corpus", k=args.k)
+    if not results:
+        print(f"No corpus passages found for: {args.query!r}")
+        print("Run `growth index --corpus` first if you haven't, or "
+              "`growth doctor` to check what's indexed.")
+        return
+    for i, r in enumerate(results, start=1):
+        meta = r["metadata"]
+        snippet = " ".join(r["content"].split())[:400]
+        label = f"{meta.get('file', r['source'])} ({meta.get('scope', '?')})"
+        print(f"{i}. [{label}]\n   {snippet}\n")
 
 
 def main() -> None:
@@ -557,11 +591,17 @@ def main() -> None:
     p_onb.add_argument("--agent", default=None, help="claude | codex | <custom from config> (no print)")
 
     p_idx = sub.add_parser("index", help="Rebuild the vault index (FTS5 + vector search)")
+    p_idx.add_argument("--corpus", action="store_true",
+                        help="Also (re)index the corpus: shared framework writeups + your personal_corpus_dir")
 
-    p_search = sub.add_parser("search", help="Hybrid search over the indexed vault/sessions")
+    p_search = sub.add_parser("search", help="Hybrid search over the indexed vault/sessions/corpus")
     p_search.add_argument("query")
     p_search.add_argument("--collection", default=None, choices=["vault", "sessions", "corpus"])
     p_search.add_argument("-k", type=int, default=10)
+
+    p_ask = sub.add_parser("ask", help="Search the corpus specifically, citation-formatted")
+    p_ask.add_argument("query")
+    p_ask.add_argument("-k", type=int, default=5)
 
     sub.add_parser("init", help="Create ~/.growth-os/config.json from the example")
     sub.add_parser("doctor", help="Diagnose config + backends + index")
@@ -600,6 +640,8 @@ def main() -> None:
         cmd_index(args, cfg)
     elif args.command == "search":
         cmd_search(args, cfg)
+    elif args.command == "ask":
+        cmd_ask(args, cfg)
 
 
 if __name__ == "__main__":

@@ -132,8 +132,9 @@ editing those files is the only thing needed to change behavior.
 | `growth concept "{name}"` | **1**, stateless | One call: write or expand the article, grounded in `grep` evidence from the current directory |
 | `growth weekly` | **1–2** | One call scores the week + interprets homework-log.md + flags learning gaps (same economy as reflect); a second, separate call triages `00-inbox/` if it's non-empty |
 | `growth onboard` | **multi-turn** | The one genuinely adaptive interview — the model picks each next question from the conversation so far. Runs once per person, or rarely on profile updates, so this doesn't carry the same per-ticket cost pressure as the others |
-| `growth index` | 0 | Rebuilds the local knowledge store from the vault (tickets, concepts, weeklies) |
-| `growth search "{query}"` | 0 | Hybrid keyword + semantic search over the indexed vault and past sessions |
+| `growth index [--corpus]` | 0 | Rebuilds the local knowledge store from the vault; `--corpus` also indexes the shared framework writeups + your `personal_corpus_dir` |
+| `growth search "{query}"` | 0 | Hybrid keyword + semantic search over the indexed vault, sessions, and corpus |
+| `growth ask "{query}"` | 0 | Same search, scoped to the corpus, citation-formatted output |
 | `growth doctor` | 0 | Reports which config is in use, vault state, index state, and which backends (`claude`/`codex`/custom) are on `PATH` |
 | `growth init` | 0 | Writes `~/.growth-os/config.json` from `config.example.json` if one doesn't exist yet |
 
@@ -161,6 +162,40 @@ Spanish need to match concepts or rubric language in English.
 A completed `reflect` or `weekly` run is also written into a `sessions` collection
 automatically — nothing consumes it yet (that's Phase 4), but the data is there from
 day one instead of needing a backfill later.
+
+### Corpus: shared (shipped) + personal (yours, local) — v3.0 Phase 3
+
+The corpus is two sources, indexed the same way, told apart by
+`metadata.scope`:
+
+- **`corpus/`** at the repo root — original writeups of the 16 frameworks the
+  agents already apply (Kolb, Ericsson, Argyris/Schön, Dreyfus, SDT, Immunity to
+  Change, Ikigai, Flow, Circle of Influence, Appreciative Inquiry, Motivational
+  Interviewing, Bloom's Taxonomy, Pennebaker/LIWC, AAR, Kirkpatrick/Klein, Habit
+  Formation). Distilled and cited — never the source books' own text — and
+  shipped in the repo the same way `workflows/` and `agents/` already are, so
+  everyone who clones growth-os gets it from day one. Extensible: write another
+  article in the same shape (what the framework says, exactly which agent
+  applies it and where, a citation to the real source) and open a PR.
+- **Your own corpus** — set `personal_corpus_dir` in `config.json` to any folder
+  of `.md`/`.txt`/`.epub`/`.pdf` files: books you own, internal docs, anything.
+  Gitignored, never committed, never shared — stays on your machine the same
+  way `config.json` itself does.
+
+```bash
+growth index --corpus       # indexes both sources into the corpus collection
+growth ask "why do I keep making the same mistake"
+```
+
+`.epub`/`.pdf` parsing is a second optional dependency
+(`pip install -r requirements-corpus.txt`, separate from
+`requirements-index.txt` — you can have one without the other). Long documents
+get paragraph-aware chunked (~800 tokens, some overlap); short ones (the
+shipped framework articles, a personal note) are indexed as a single chunk,
+same as a vault note.
+
+Nothing here replaces reading the actual book — a citation and a distilled
+explanation are a starting point, not a substitute for the real thing.
 
 **`--agent <name>`** picks the backend, on every command except `onboard`:
 - `claude` (default) — shells out to `claude -p --output-format json --setting-sources ""`,
@@ -332,6 +367,7 @@ Writes a weekly review note to `30-weekly/{YYYY-[W]WW}.md`:
 | `project_docs_subfolders` | Subfolders inside `60-project/` | Set by `/growth:onboard` |
 | `default_backend` | Which `--agent` the CLI uses when you don't pass one | Safe to change anytime |
 | `backends` | Extra model backends as `{name: [argv, "...", "{prompt}"]}` — `claude`/`codex`/`print` are built in | Add a line per extra agent |
+| `personal_corpus_dir` | Path to your own corpus (books, docs) for `growth index --corpus` — `.md`/`.txt`/`.epub`/`.pdf`, gitignored, never shared | Set it or leave `null` |
 
 > **Warning:** `concept_domains` maps directly to vault folder names. If you change it manually
 > after `/growth:onboard` has run, you must also rename the corresponding folders in your vault.
@@ -357,6 +393,9 @@ growthos/
   store.py             — SQLite FTS5 + sqlite-vec store, hybrid search (RRF), zero-hit log
   embed.py             — fastembed wrapper (optional dep; store.py degrades without it)
   ingest.py            — vault -> store indexing, session logging, concept retrieval
+  corpus.py            — epub/pdf/md/txt extraction + chunking, shared + personal corpus indexing
+corpus/                — shipped framework writeups (scope: shared), one file per framework
+requirements-corpus.txt  — optional: ebooklib + pypdf, for .epub/.pdf in your personal corpus
   tokens.py            — per-call token/cost logging to ~/.growth-os/logs/tokens.jsonl
 commands/
   growth/
