@@ -28,9 +28,24 @@ class Result:
 def run_claude(prompt: str) -> Result:
     if not shutil.which("claude"):
         raise BackendError("`claude` CLI not found on PATH.")
+    # stdin=DEVNULL is load-bearing: without it, the subprocess inherits our own
+    # stdin, and onboard's turn-by-turn loop (subprocess call, then input(), many
+    # times per run) races the child process for the same piped lines -- a `claude`
+    # invocation can read ahead and swallow answers meant for Python's next input(),
+    # collapsing what should be a multi-turn interview into one. Reproduced and
+    # confirmed during onboard testing before this fix.
+    # --setting-sources "" is load-bearing, not an optimization: without it, `claude -p`
+    # loads the caller's user + project CLAUDE.md and memory files into every call —
+    # measured ~84% of cache-creation tokens on a bare call, and real contamination risk
+    # (an onboarding interview or a reflection score picking up facts from the operator's
+    # own CLAUDE.md instead of what the person actually typed). It does NOT remove
+    # account-level identity (name/email tied to the authenticated session) — that's a
+    # platform property no CLI flag suppresses. The workflows' own confirm-before-write
+    # steps (onboard's profile summary, reflect/weekly's note write) are the real
+    # backstop for that last bit, not this flag.
     proc = subprocess.run(
-        ["claude", "-p", prompt, "--output-format", "json"],
-        capture_output=True, text=True, timeout=600,
+        ["claude", "-p", prompt, "--output-format", "json", "--setting-sources", ""],
+        capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
     )
     if proc.returncode != 0:
         raise BackendError(f"claude -p failed: {proc.stderr.strip() or proc.stdout.strip()}")
@@ -56,7 +71,7 @@ def run_codex(prompt: str) -> Result:
     try:
         proc = subprocess.run(
             ["codex", "exec", "--output-last-message", str(out_file), prompt],
-            capture_output=True, text=True, timeout=600,
+            capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
         )
         if proc.returncode != 0:
             raise BackendError(f"codex exec failed: {proc.stderr.strip() or proc.stdout.strip()}")
@@ -72,7 +87,7 @@ def run_generic(argv_template: list[str], prompt: str) -> Result:
     argv = [a.replace("{prompt}", prompt) for a in argv_template]
     if not shutil.which(argv[0]):
         raise BackendError(f"`{argv[0]}` not found on PATH.")
-    proc = subprocess.run(argv, capture_output=True, text=True, timeout=600)
+    proc = subprocess.run(argv, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise BackendError(f"{argv[0]} failed: {proc.stderr.strip() or proc.stdout.strip()}")
     return Result(text=proc.stdout, usage={})

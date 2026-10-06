@@ -1,11 +1,4 @@
-Write or expand a concept article in the Obsidian vault.
+Run `~/Documents/growth-os/growth concept "$ARGUMENTS"` in a real terminal — it's a
+standalone CLI now (v3.0), not a Claude Code workflow. Tell the user to run it there.
 
-Arguments: $ARGUMENTS (concept name, e.g. "nestjs-interceptors" or "TypeORM migrations")
-
-Load config and follow the full workflow:
-
-```bash
-cat ~/Documents/growth-os/config.json
-```
-
-Then load and follow: `~/Documents/growth-os/workflows/concept.md`
+(Legacy path, no CLI available: load and follow `~/Documents/growth-os/workflows/concept.md` directly.)

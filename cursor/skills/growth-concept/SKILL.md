@@ -8,15 +8,10 @@ description: >-
 
 # Growth OS — Concept
 
-## Setup
+Standalone CLI now (v3.0). Tell the user to run this in a real terminal:
 
 ```bash
-GROWTH_OS_HOME="${GROWTH_OS_HOME:-$HOME/Documents/growth-os}"
-cat "$GROWTH_OS_HOME/config.json"
+~/Documents/growth-os/growth concept "concept name here"
 ```
 
-## Execute
-
-1. Read and follow **`$GROWTH_OS_HOME/workflows/concept.md`** completely.
-2. Template: **`$GROWTH_OS_HOME/templates/concept-article.md`**.
-3. Use the concept name from the user's message as the topic.
+(Legacy path, no CLI available: read and follow `~/Documents/growth-os/workflows/concept.md` completely.)

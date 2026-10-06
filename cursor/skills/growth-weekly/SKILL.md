@@ -7,26 +7,15 @@ description: >-
 
 # Growth OS — Weekly Review
 
-## Setup
+Standalone CLI now (v3.0). Tell the user to run this in a real terminal:
 
 ```bash
-GROWTH_OS_HOME="${GROWTH_OS_HOME:-$HOME/Documents/growth-os}"
-cat "$GROWTH_OS_HOME/config.json"
+~/Documents/growth-os/growth weekly
 ```
 
-## Execute
+It runs the interview, scores the week (rubric: `agents/weekly-reviewer.md`), writes
+the note, and finishes by triaging `00-inbox/` (shows a plan, waits for confirmation).
+Don't try to drive its interview or the inbox confirmation through Cursor's tool calls.
 
-1. Read and follow **`$GROWTH_OS_HOME/workflows/weekly-review.md`** completely. Do not skip or reorder steps.
-2. Template: **`$GROWTH_OS_HOME/templates/weekly-review.md`**.
-
-Do not fill skill-domain self-ratings — that is the user's job.
-
-## Weekly reviewer agent (mandatory)
-
-Whenever the workflow invokes scoring or structured weekly analysis:
-
-1. Read **`$GROWTH_OS_HOME/agents/weekly-reviewer.md`** in full before scoring or summarizing.
-2. **Adopt that file as your persona** for review/scoring — W1–W5 dimensions, evidence rules, capability-assertion quality, and output blocks come from the agent, not from general coaching instinct.
-3. Use the user's answers **verbatim** where the workflow requires it; do not paraphrase away nuance before scoring.
-4. Apply the rubric **as written** — do not improvise dimensions, rename W1–W5, or soften criteria.
-5. Follow vault-driven resource recommendations only (as the agent specifies); do not invent external links or courses.
+(Legacy path, no CLI available: read and follow `~/Documents/growth-os/workflows/weekly-review.md`
+completely, adopting `~/Documents/growth-os/agents/weekly-reviewer.md` as the scoring persona.)

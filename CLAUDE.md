@@ -33,19 +33,21 @@ Every ticket → reflection → concept wikilinks → knowledge graph grows.
 
 ## Commands
 
-- `/growth:onboard` — run once to set up profile and scaffold vault
-- `/growth:premortem` — run BEFORE coding starts on a ticket; captures predictions and writes a draft note
-- `/growth:reflect` — run AFTER ticket resolves; detects pre-mortem draft if one exists and completes the note
-- `/growth:concept {name}` — write or expand a concept article
-- `/growth:weekly` — end-of-sprint review
+As of v3.0, all five run as a standalone Python CLI (`growthos/`), not inline Claude
+Code workflows — `commands/growth/*.md` are now one-line pointers at it:
 
-Commands load their full workflow from `workflows/`. Read those files for full orchestration details.
+- `growth onboard` — run once to set up profile and scaffold vault; re-run to update. The
+  one multi-turn command — adaptive interview, persona in `agents/onboarding-agent.md`
+- `growth premortem` — run BEFORE coding starts on a ticket; captures predictions, writes a draft note
+- `growth reflect` — run AFTER ticket resolves; detects a pre-mortem draft if one exists and completes the note
+- `growth concept "{name}"` — write or expand a concept article
+- `growth weekly` — end-of-sprint review, then triages `00-inbox/`
 
-## Planning
-
-Active state: `.planning/STATE.md`
-Roadmap: `.planning/ROADMAP.md`
-Milestone history: `.planning/milestones/`
+The workflows in `workflows/` and the rubrics/personas in `agents/` are still the actual
+asset — `growthos/` reads them at call time rather than duplicating them. Read those
+files for full orchestration detail; read `growthos/cli.py` for how each one is run.
+If you're asked to help with `growth-os` itself (not a `/growth:*` command on someone's
+own ticket), this is the entry point, not `workflows/`.
 
 ## Separation of Concerns
 

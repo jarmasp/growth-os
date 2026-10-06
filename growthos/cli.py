@@ -7,7 +7,8 @@ import argparse
 import shutil
 import sys
 
-from . import backend, config, interview, prompt, tokens, vault
+from . import (backend, concept as concept_mod, config, inbox as inbox_mod, interview,
+               onboard as onboard_mod, prompt, tokens, vault, weekly)
 
 
 def _confirm(prompt_text: str) -> bool:
@@ -192,6 +193,258 @@ Reflection scored: {ticket_id}
 Written to: {target_path}""")
 
 
+def cmd_concept(args, cfg: dict) -> None:
+    slug = concept_mod.resolve_slug(args.name)
+    existing_path = concept_mod.find_concept_file(cfg, slug)
+    state = concept_mod.classify_state(existing_path)
+
+    sections_to_update = None
+    existing_body = None
+    if state == "full":
+        print(f"Full article already exists: {existing_path}")
+        sections_to_update = input(
+            "¿Qué sección actualizar? (nombre de la sección, o 'all' para repasar todo) "
+        ).strip()
+        existing_body = existing_path.read_text().split("---\n", 2)[-1].split("\n# ", 1)[-1]
+    elif state == "stub":
+        print(f"Stub found, expanding: {existing_path}")
+        existing_body = existing_path.read_text().split("---\n", 2)[-1].split("\n# ", 1)[-1]
+    else:
+        print(f"No existing article for '{slug}' — writing a new one.")
+
+    evidence = concept_mod.gather_codebase_evidence(args.name)
+    text_prompt = prompt.build_concept_prompt(
+        concept_name=args.name,
+        domains=cfg.get("concept_domains", []),
+        project_name=cfg.get("project_name", "your project"),
+        codebase_evidence=evidence,
+        existing_body=existing_body,
+        sections_to_update=sections_to_update,
+    )
+
+    if args.agent == "print":
+        print("\n" + "=" * 70)
+        print(text_prompt)
+        print("=" * 70)
+        return
+
+    try:
+        result = backend.run(args.agent, text_prompt, cfg)
+    except backend.BackendError as e:
+        print(f"Error calling {args.agent}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    entry = tokens.log("concept", args.agent, text_prompt, result)
+    print(tokens.summarize(entry))
+
+    try:
+        parsed = prompt.parse_concept_response(result.text)
+    except prompt.ParseError as e:
+        print(f"Model response could not be parsed: {e}", file=sys.stderr)
+        print(f"Raw response:\n{result.text}", file=sys.stderr)
+        sys.exit(1)
+
+    domain = parsed["domain"] if parsed["domain"] in cfg.get("concept_domains", []) else \
+        (cfg.get("concept_domains") or ["uncategorized"])[0]
+    path = concept_mod.write_article(
+        cfg, slug=slug, title=args.name, domain=domain,
+        confidence=parsed["confidence"], body=parsed["body"], existing_path=existing_path,
+    )
+    wikilinks = concept_mod.extract_wikilinks(parsed["body"])
+    rel = path.relative_to(config.vault_root(cfg))
+    print(f"\nConcept written: {rel}")
+    print(f"Wikilinks: {', '.join(wikilinks) if wikilinks else '(none — add at least 2 manually)'}")
+    print(f"Confidence: {parsed['confidence']}")
+
+
+def cmd_weekly(args, cfg: dict) -> None:
+    note_path = weekly.weekly_note_path(cfg)
+    if note_path.exists():
+        # ponytail: the original workflow offers a merged "mid-week update" section
+        # instead of overwriting. Simplified here to confirm-or-abort; add the merge
+        # if mid-week re-runs turn out to be common.
+        if not _confirm(f"{note_path.name} ya existe para esta semana. ¿Sobreescribir? [y/N]"):
+            print("Cancelado.")
+            return
+
+    tickets = weekly.gather_tickets(cfg)
+    homework_log = weekly.gather_homework(cfg)
+    trend = weekly.gather_score_trend(cfg)
+
+    print(f"Tickets esta semana: {len(tickets)}")
+    for t in tickets:
+        print(f"  - {t['ticket']}: {t['title']}")
+    if not tickets:
+        print("  (ninguno -- igual corremos la entrevista y escribimos la review)")
+
+    print("\nStarting weekly interview -- answer each question, then I'll write the note.")
+    qs = interview.parse_questions(config.workflow_path("weekly-review.md"))
+    answers = {
+        "w1": interview.ask(qs["1"]["text"]),
+        "w2": interview.ask(qs["2"]["text"]),
+        "w3": interview.ask(qs["3"]["text"]),
+        "w4": interview.ask(qs["4"]["text"]),
+    }
+    print("\nGracias -- escribiendo la nota...")
+
+    rubric = prompt.load_weekly_rubric()
+    text_prompt = prompt.build_weekly_prompt(
+        rubric_text=rubric, week=weekly.week_id(), tickets=tickets,
+        homework_log=homework_log, answers=answers,
+    )
+
+    if args.agent == "print":
+        print("\n" + "=" * 70)
+        print(text_prompt)
+        print("=" * 70)
+        return
+
+    try:
+        result = backend.run(args.agent, text_prompt, cfg)
+    except backend.BackendError as e:
+        print(f"Error calling {args.agent}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    entry = tokens.log("weekly", args.agent, text_prompt, result)
+    print(tokens.summarize(entry))
+
+    try:
+        scores = prompt.parse_weekly_response(result.text)
+    except prompt.ParseError as e:
+        print(f"Model response could not be parsed: {e}", file=sys.stderr)
+        print(f"Raw response:\n{result.text}", file=sys.stderr)
+        sys.exit(1)
+
+    weekly.compose_and_write(cfg, path=note_path, tickets=tickets, trend=trend,
+                              answers=answers, scores=scores)
+
+    print(f"""
+─────────────────────────────────────────────────────────────────────────────
+Weekly review scored: {weekly.week_id()}
+
+  W1 Learning Velocity     {scores['w1']}/3   {scores['w1_fb']}
+  W2 Pattern Recognition   {scores['w2']}/2   {scores['w2_fb']}
+  W3 Gap Specificity       {scores['w3']}/2   {scores['w3_fb']}
+  W4 Capability Assertion  {scores['w4']}/2   {scores['w4_fb']}
+  W5 System Health         {scores['w5']}/1   {scores['w5_fb']}
+  ─────────────────────
+  Total                    {scores['total']}/10  ({weekly.band_for(scores['total'])})
+
+  {scores['analysis']}
+{scores.get('recommendations', '')}
+─────────────────────────────────────────────────────────────────────────────
+
+Written to: {note_path}""")
+
+    cmd_process_inbox(args, cfg)
+
+
+def cmd_process_inbox(args, cfg: dict) -> None:
+    files = inbox_mod.read_inbox(cfg)
+    if not files:
+        print("\nInbox is empty -- nothing to triage.")
+        return
+
+    text_prompt = inbox_mod.build_triage_prompt(cfg, files)
+
+    if args.agent == "print":
+        print("\n" + "=" * 70)
+        print(text_prompt)
+        print("=" * 70)
+        return
+
+    try:
+        result = backend.run(args.agent, text_prompt, cfg)
+    except backend.BackendError as e:
+        print(f"Error calling {args.agent} for inbox triage: {e}", file=sys.stderr)
+        return
+
+    entry = tokens.log("process_inbox", args.agent, text_prompt, result)
+    print(tokens.summarize(entry))
+
+    plan = inbox_mod.parse_triage_response(result.text, files)
+    if not plan:
+        print("No se pudo generar un plan de triage -- nada movido.")
+        return
+
+    print(f"\nInbox triage plan -- {len(plan)} files found:\n")
+    for i, item in enumerate(plan, start=1):
+        print(f"{i}. {item['name']} -> {item['action']} ({item['reason']})")
+
+    reply = input("\nProceed? (reply `proceed` to execute all, `skip N` or `skip N M` to exclude items, "
+                  "anything else aborts.) ").strip()
+    if reply == "proceed":
+        skip = set()
+    elif reply.startswith("skip "):
+        skip = {int(n) for n in reply[5:].split() if n.isdigit()}
+    else:
+        print("Aborted -- nothing moved.")
+        return
+
+    result_counts = inbox_mod.execute_plan(cfg, plan, skip)
+    print(f"""
+Inbox triage complete.
+  Moved:   {len(result_counts['moved'])} ({', '.join(result_counts['moved']) or 'none'})
+  Skipped: {len(result_counts['skipped'])} ({', '.join(result_counts['skipped']) or 'none'})
+  Deleted: {len(result_counts['deleted'])} ({', '.join(result_counts['deleted']) or 'none'})""")
+
+
+def cmd_onboard(args, cfg: dict) -> None:
+    if args.agent == "print":
+        print("growth onboard needs a real back-and-forth with the model (the interview is "
+              "adaptive, not fixed questions) -- --agent print has nothing to export here.")
+        sys.exit(1)
+
+    first_run = "user_profile" not in cfg
+    if not first_run:
+        print("Ya tienes un perfil guardado. ¿Quieres actualizarlo (responde \"actualizar\")")
+        reply = input("o salir sin cambios (cualquier otra cosa)? ").strip().lower()
+        if reply != "actualizar":
+            print("Sin cambios.")
+            return
+        print("\nVault scaffolding skipped — updating profile only.")
+    else:
+        print("""Bienvenido al Growth OS.
+
+Antes de configurar tu sistema, quiero entender quién eres y hacia dónde vas.
+Voy a hacerte 4–5 preguntas. No hay respuestas correctas ni incorrectas.
+Sé tan honesto como puedas — el sistema funciona mejor cuanto más real sea el perfil.
+
+Esto no reemplaza a un coach o psicólogo. Es una orientación para que tu sistema
+de crecimiento apunte hacia lo que genuinamente importa.
+
+¿Listo? Empecemos.""")
+
+    profile = onboard_mod.run_interview(args.agent, cfg)
+    if profile is None:
+        print("Onboarding abortado -- nada se escribió.")
+        sys.exit(1)
+
+    cfg_path = onboard_mod.write_profile(profile)
+    cfg = config.load()  # re-read: write_profile may have synced concept_domains/project_name
+
+    if first_run:
+        print("\nScaffolding vault...")
+        for line in onboard_mod.scaffold_vault(cfg):
+            print(f"  {line}")
+
+    note_path = onboard_mod.write_profile_note(cfg, profile)
+
+    print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Onboarding completo.
+
+  Perfil guardado en: {cfg_path}
+  Nota de vault:      {note_path}
+
+  Próximos pasos:
+  · Abre Obsidian — las carpetas y templates ya están instalados
+  · Activa el plugin Templater y apúntalo a 99-templates/ en tu vault
+  · Corre `growth premortem` / `growth reflect` después de tu próximo ticket
+  · Corre `growth weekly` al final de esta semana
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""")
+
+
 def cmd_init(args) -> None:
     dest = config.CANONICAL_CONFIG
     if dest.exists():
@@ -240,6 +493,16 @@ def main() -> None:
     p_ref = sub.add_parser("reflect", help="After coding: reflect and score")
     p_ref.add_argument("--agent", default=None, help="claude | codex | print | <custom from config>")
 
+    p_con = sub.add_parser("concept", help="Write or expand a concept article")
+    p_con.add_argument("name", help='Concept name, e.g. "NestJS interceptors"')
+    p_con.add_argument("--agent", default=None, help="claude | codex | print | <custom from config>")
+
+    p_week = sub.add_parser("weekly", help="End of sprint: review, score, triage inbox")
+    p_week.add_argument("--agent", default=None, help="claude | codex | print | <custom from config>")
+
+    p_onb = sub.add_parser("onboard", help="Adaptive profile interview + vault scaffold")
+    p_onb.add_argument("--agent", default=None, help="claude | codex | <custom from config> (no print)")
+
     sub.add_parser("init", help="Create ~/.growth-os/config.json from the example")
     sub.add_parser("doctor", help="Diagnose config + backends")
 
@@ -265,6 +528,12 @@ def main() -> None:
         cmd_premortem(args, cfg)
     elif args.command == "reflect":
         cmd_reflect(args, cfg)
+    elif args.command == "concept":
+        cmd_concept(args, cfg)
+    elif args.command == "weekly":
+        cmd_weekly(args, cfg)
+    elif args.command == "onboard":
+        cmd_onboard(args, cfg)
 
 
 if __name__ == "__main__":

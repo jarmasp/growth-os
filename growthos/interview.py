@@ -2,20 +2,26 @@
 Python. Editing a question's wording in the markdown (the actual asset) is enough —
 nothing in growthos/ needs to change in step.
 
-Each question block in the workflows looks like:
+Each question block in the workflows looks like one of:
 
     **Q1 -- Assumptions**
     ```
     Que asumiste en este ticket? ...
     ```
 
-parse_questions() extracts {id: {"title": ..., "text": ...}} in file order.
+    **W-Q1 — Patrón de la semana**
+    ```
+    Que patron se repitio esta semana? ...
+    ```
+
+parse_questions() extracts {id: {"title": ..., "text": ...}} in file order — "1" for
+both "Q1" and "W-Q1" (each workflow file is parsed separately, so there's no collision).
 """
 import re
 from pathlib import Path
 
 _QBLOCK_RE = re.compile(
-    r"\*\*Q([A-Za-z0-9_]+)\s*--\s*([^\n*]+?)\*\*\s*\n```\s*\n(.*?)\n```",
+    r"\*\*(?:W-)?Q([A-Za-z0-9_]+)\s*(?:--|—)\s*([^\n*]+?)\*\*\s*\n```\s*\n(.*?)\n```",
     re.DOTALL,
 )
 
