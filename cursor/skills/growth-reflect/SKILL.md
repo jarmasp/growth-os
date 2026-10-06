@@ -8,26 +8,19 @@ description: >-
 
 # Growth OS — Reflect
 
-## Setup
+Standalone CLI now (v3.0). Tell the user to run this in a real terminal:
 
 ```bash
-GROWTH_OS_HOME="${GROWTH_OS_HOME:-$HOME/Documents/growth-os}"
-cat "$GROWTH_OS_HOME/config.json"
+~/Documents/growth-os/growth reflect
 ```
 
-## Execute
+It runs the interview, calls the model once to score the reflection (rubric:
+`agents/reflection-scorer.md`), and writes the scored note + ledger row itself.
+Don't try to drive its interactive interview through Cursor's own tool calls — it
+runs `input()` in a loop and expects a real terminal.
 
-1. Read and follow **`$GROWTH_OS_HOME/workflows/reflect.md`** completely (interactive interview, then vault write). Do not skip or reorder steps.
-2. Template reference: **`$GROWTH_OS_HOME/templates/ticket-reflection.md`**.
+`--agent codex` or `--agent print` switch the model backend; `--agent print` just
+prints the assembled prompt instead of calling anything.
 
-Ask for branch, ticket ID, and short description upfront — do not infer from git alone.
-
-## Scoring agent (mandatory)
-
-When the workflow reaches the `score` step:
-
-1. Read **`$GROWTH_OS_HOME/agents/reflection-scorer.md`** in full before scoring.
-2. **Adopt that file as your persona** for scoring only — tone, rubric, dimension definitions (D1–D5), score ranges, and output format are defined there, not by you.
-3. Pass the scorer exactly what `reflect.md` specifies (`TICKET`, `PATTERN`, `FILES`, `Q1`–`Q4` verbatim).
-4. Apply the rubric **as written** — do not improvise dimensions, weights, or feedback style.
-5. Write scores to the vault and terminal **exactly** as the scorer and workflow require (raw integers D1–D5, `TOTAL` 0–10, no fractions).
+(Legacy path, no CLI available: read and follow `~/Documents/growth-os/workflows/reflect.md`
+completely, adopting `~/Documents/growth-os/agents/reflection-scorer.md` as the scoring persona.)

@@ -8,15 +8,13 @@ description: >-
 
 # Growth OS — Premortem
 
-## Setup
+Standalone CLI now (v3.0). Tell the user to run this in a real terminal:
 
 ```bash
-GROWTH_OS_HOME="${GROWTH_OS_HOME:-$HOME/Documents/growth-os}"
-cat "$GROWTH_OS_HOME/config.json"
+~/Documents/growth-os/growth premortem
 ```
 
-## Execute
+Don't try to drive its interactive interview through Cursor's own tool calls — it
+runs `input()` in a loop and expects a real terminal.
 
-1. Read and follow **`$GROWTH_OS_HOME/workflows/premortem.md`** completely.
-2. Writes draft with `status: in-progress` in the vault tickets folder.
-3. After the ticket is done, user should run **growth-reflect** (detects the draft automatically).
+(Legacy path, no CLI available: read and follow `~/Documents/growth-os/workflows/premortem.md` completely.)

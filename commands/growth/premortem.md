@@ -1,15 +1,5 @@
-Run a pre-mortem BEFORE coding starts on a ticket. Captures business context, probable
-failure points, design pattern, and key assumptions. Writes a draft reflection note to
-the vault with status: in-progress.
+Run `~/Documents/growth-os/growth premortem` in a real terminal — it's a standalone
+interactive CLI now (v3.0), not a Claude Code workflow. Tell the user to run it there;
+don't try to drive its interview through the Bash tool.
 
-When the ticket is resolved, run /growth:reflect — it detects the draft automatically,
-preserves the pre-mortem content, and replaces the Assumptions question with a bridge
-question comparing predictions to reality.
-
-Load config and follow the full workflow:
-
-```bash
-cat ~/Documents/growth-os/config.json
-```
-
-Then load and follow: `~/Documents/growth-os/workflows/premortem.md`
+(Legacy path, no CLI available: load and follow `~/Documents/growth-os/workflows/premortem.md` directly.)

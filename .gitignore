@@ -9,3 +9,7 @@ SESSION-*.md
 
 # OS artifacts
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc

@@ -1,9 +1,5 @@
-Write a ticket reflection note in the Obsidian vault. Will ask for branch, ticket ID, and description before starting.
+Run `~/Documents/growth-os/growth reflect` in a real terminal — it's a standalone
+interactive CLI now (v3.0), not a Claude Code workflow. Tell the user to run it there;
+don't try to drive its interview through the Bash tool.
 
-Load config and follow the full workflow:
-
-```bash
-cat ~/Documents/growth-os/config.json
-```
-
-Then load and follow: `~/Documents/growth-os/workflows/reflect.md`
+(Legacy path, no CLI available: load and follow `~/Documents/growth-os/workflows/reflect.md` directly.)

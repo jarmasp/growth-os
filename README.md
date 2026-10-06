@@ -100,6 +100,23 @@ Then edit `config.json` so `vault_root` points to a folder **inside** your Obsid
 Runs a 5-phase adaptive interview, saves your profile to `config.json`, and scaffolds your
 vault with every folder, template, and MOC file it needs. Idempotent — safe to re-run.
 
+**5. Premortem and reflect run from a plain terminal — no agent needed**
+
+```bash
+~/Documents/growth-os/growth premortem
+~/Documents/growth-os/growth reflect
+```
+
+These two are a standalone Python CLI (stdlib only) as of v3.0 — the interview runs in
+Python, and the model is called once, statelessly, only where real judgment is needed
+(reflect's scoring). Add it to your `PATH` and it's just `growth premortem` / `growth reflect`.
+`--agent claude|codex|print` picks the backend (`print` dumps the assembled prompt to
+stdout instead of calling anything — paste it into any model, anywhere). `growth doctor`
+checks your config and backends; `growth init` writes `~/.growth-os/config.json` for you.
+
+`/growth:onboard`, `/growth:concept`, and `/growth:weekly` still run as Claude
+Code / Cursor commands — only premortem and reflect have been ported so far.
+
 ---
 
 ## 🛠️ Commands
@@ -107,8 +124,8 @@ vault with every folder, template, and MOC file it needs. Idempotent — safe to
 | Command | When | Writes to |
 |---------|------|-----------|
 | `/growth:onboard` | Once on setup · re-run to update profile | `config.json` + vault scaffold |
-| `/growth:premortem` | Before coding starts on a ticket | `20-tickets/{ticket}-draft.md` |
-| `/growth:reflect` | After resolving a ticket | `20-tickets/{ticket}.md` |
+| `growth premortem` | Before coding starts on a ticket | `20-tickets/{ticket}-draft.md` |
+| `growth reflect` | After resolving a ticket | `20-tickets/{ticket}.md` |
 | `/growth:concept {name}` | When a pattern felt unclear | `10-concepts/{domain}/{slug}.md` |
 | `/growth:weekly` | End of sprint / every Friday | `30-weekly/{YYYY-[W]WW}.md` |
 
@@ -144,9 +161,11 @@ Three recurring drills tracked in `homework-log.md`:
 ## 📁 Repository Structure
 
 ```
-commands/growth/   Claude Code slash commands (source of truth)
-workflows/         Full orchestration docs loaded by each command
-agents/            Scoring-rubric agents
+growth             CLI entry point — `growth premortem` / `growth reflect`
+growthos/          CLI implementation (stdlib only): config, interview, backend, vault I/O
+commands/growth/   Claude Code slash commands (source of truth for the unported ones)
+workflows/         Full orchestration docs — the actual asset; growthos/ just runs them
+agents/            Scoring-rubric agents — read verbatim by growthos/prompt.py, never duplicated
 templates/         Reference copies of the Obsidian note templates
 cursor/            Cursor integration — skills, rule, slash commands, installer
 install.sh         Links commands into ~/.claude/commands/growth/

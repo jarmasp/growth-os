@@ -15,6 +15,8 @@
   "concept_domains": ["backend", "system-design", "security", "infra"],
   "project_name": "your-project-name",
   "project_docs_subfolders": ["adr", "modules", "domain", "business", "runbooks"],
+  "default_backend": "claude",
+  "backends": {},
   "user_profile": {
     "name": "Your Name",
     "role": "Your Role",

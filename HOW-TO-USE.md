@@ -15,7 +15,9 @@ projects, no separate learning time. The work IS the practice.
 | Dependency | Purpose | Install |
 |------------|---------|---------|
 | [Obsidian](https://obsidian.md) | Local-first knowledge graph | Free download |
-| [Claude Code](https://claude.ai/code) **or** [Cursor](https://cursor.com) | Agent that runs the growth commands | `npm install -g @anthropic-ai/claude-code`, or Cursor's own installer |
+| Python 3.10+ | Runs `growth premortem` / `growth reflect` — stdlib only, nothing to `pip install` | Usually already on macOS/Linux |
+| `claude` and/or `codex` CLI on PATH | Model backend for `growth reflect`'s scoring call | Either works; `--agent print` needs neither |
+| [Claude Code](https://claude.ai/code) **or** [Cursor](https://cursor.com) | Only needed for `/growth:onboard`, `/growth:concept`, `/growth:weekly` — not ported to the CLI yet | `npm install -g @anthropic-ai/claude-code`, or Cursor's own installer |
 
 ### Obsidian Plugins
 
@@ -100,6 +102,51 @@ Open Claude Code in any project directory and run:
 ```
 
 This runs a 5-phase adaptive interview and scaffolds your vault automatically.
+
+### 5. Run premortem / reflect from a terminal
+
+```bash
+~/Documents/growth-os/growth init      # writes ~/.growth-os/config.json from the example
+~/Documents/growth-os/growth doctor    # sanity-checks config + which backends are on PATH
+```
+
+`growth init` is optional if you already made `config.json` in step 3 — the CLI falls
+back to the repo-root one. Add `~/Documents/growth-os` to your `PATH` and these become
+plain `growth premortem` / `growth reflect`.
+
+---
+
+## CLI Reference (v3.0)
+
+`growth premortem` and `growth reflect` are a standalone Python CLI — stdlib only, no
+`pip install`. Claude Code or Cursor don't need to be open; this is designed to run in
+a plain terminal. The interview questions are parsed straight out of `workflows/*.md`
+(not duplicated in Python), and `growth reflect`'s scoring rubric is read verbatim from
+`agents/reflection-scorer.md` at call time — editing those files is the only thing
+needed to change behavior.
+
+| Command | Model calls | What it does |
+|---------|------------|---------------|
+| `growth premortem` | **0** — pure templating of your own answers | Same interview as `/growth:premortem`, writes the same draft |
+| `growth reflect` | **1**, stateless | Interview, then one call: score the reflection (always), and — only if no premortem draft exists for this ticket — also infer the Pre-mortem section from `git log`/`git diff` against `main` |
+| `growth doctor` | 0 | Reports which config is in use, vault state, and which backends (`claude`/`codex`/custom) are on `PATH` |
+| `growth init` | 0 | Writes `~/.growth-os/config.json` from `config.example.json` if one doesn't exist yet |
+
+**`--agent <name>`** on `premortem`/`reflect` picks the backend:
+- `claude` (default) — shells out to `claude -p --output-format json`, so you get real
+  token/cost usage per call, logged to `~/.growth-os/logs/tokens.jsonl`
+- `codex` — shells out to `codex exec --output-last-message`
+- `print` — prints the assembled prompt to stdout and exits; writes nothing. Pipe it
+  anywhere: `growth reflect --agent print | pbcopy`. (`premortem` ignores this flag —
+  it never calls a model.)
+- anything else — looked up in `config.json`'s `"backends"` object as a plain argv
+  template, e.g. `"qwen": ["qwen", "chat", "{prompt}"]`
+
+**Config resolution**: `$GROWTH_OS_CONFIG` env var, else `~/.growth-os/config.json`,
+else the repo-root `config.json` (back-compat with the pre-v3.0 layout).
+
+**What isn't ported yet**: `/growth:onboard`, `/growth:concept`, `/growth:weekly` —
+still run as Claude Code / Cursor commands, same as before.
 
 ---
 
@@ -244,6 +291,8 @@ Writes a weekly review note to `30-weekly/{YYYY-[W]WW}.md`:
 | `concept_domains` | Subdomain folders in `10-concepts/` | Set by `/growth:onboard` — do not edit manually |
 | `vault.*` | Section subfolder names | Set once during onboarding, stable |
 | `project_docs_subfolders` | Subfolders inside `60-project/` | Set by `/growth:onboard` |
+| `default_backend` | Which `--agent` the CLI uses when you don't pass one | Safe to change anytime |
+| `backends` | Extra model backends as `{name: [argv, "...", "{prompt}"]}` — `claude`/`codex`/`print` are built in | Add a line per extra agent |
 
 > **Warning:** `concept_domains` maps directly to vault folder names. If you change it manually
 > after `/growth:onboard` has run, you must also rename the corresponding folders in your vault.
@@ -254,6 +303,15 @@ Writes a weekly review note to `30-weekly/{YYYY-[W]WW}.md`:
 ## Repository Structure
 
 ```
+growth                 — CLI entry point: `growth premortem` / `growth reflect` / `growth init` / `growth doctor`
+growthos/
+  cli.py               — argparse wiring, one function per subcommand
+  config.py            — config resolution (~/.growth-os/config.json, env override, repo-root fallback)
+  backend.py           — claude/codex/print/custom subprocess backends
+  interview.py         — parses Q-blocks out of workflows/*.md, runs the ask-one-at-a-time loop
+  prompt.py            — builds reflect's one model call, reads agents/reflection-scorer.md verbatim
+  vault.py             — git context, draft detection, note read/write, frontmatter scoring, ledger
+  tokens.py            — per-call token/cost logging to ~/.growth-os/logs/tokens.jsonl
 commands/
   growth/
     reflect.md          — /growth:reflect command stub
