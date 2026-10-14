@@ -5,7 +5,30 @@ the only thing anyone has to do to change scoring behavior.
 """
 import re
 
-from . import config
+from . import config, store
+
+GROUNDING_K = 3
+PRIOR_SESSIONS_K = 3
+
+
+def retrieve_grounding(query: str, *, exclude_source: str | None = None) -> tuple[str, str]:
+    """Queries the corpus and sessions collections for text to ground a reflect/weekly
+    prompt in. Returns (grounding_text, prior_sessions_text), each "" when nothing
+    relevant was indexed yet -- store.search already degrades gracefully on its own,
+    this just formats what comes back (or doesn't) into prompt-ready blocks."""
+    corpus_hits = store.search(query, collection="corpus", k=GROUNDING_K)
+    grounding = "\n\n".join(
+        f"[{h['metadata'].get('file', h['source'])}]\n{' '.join(h['content'].split())[:500]}"
+        for h in corpus_hits
+    )
+
+    session_hits = store.search(query, collection="sessions", k=PRIOR_SESSIONS_K)
+    session_hits = [h for h in session_hits if h["source"] != exclude_source]
+    prior_sessions = "\n\n".join(
+        f"[{h['source']}]\n{' '.join(h['content'].split())[:300]}"
+        for h in session_hits
+    )
+    return grounding, prior_sessions
 
 OUTPUT_CONTRACT = """
 Respond in EXACTLY this format and nothing else — no preamble, no markdown fences
@@ -35,7 +58,8 @@ context only -- never invented. If no inference was requested, write exactly: NO
 
 def build_reflect_prompt(*, rubric_text: str, ticket_id: str, short_description: str,
                           pattern: str, files: str, answers: dict,
-                          need_premortem_inference: bool, git_context: dict | None) -> str:
+                          need_premortem_inference: bool, git_context: dict | None,
+                          grounding: str = "", prior_sessions: str = "") -> str:
     parts = [rubric_text.strip()]
     parts.append(f"""
 Score this reflection. Context:
@@ -48,6 +72,10 @@ Q1 (Assumptions / bridge): {answers.get("q1", "")}
 Q2 (What Was Hard): {answers.get("q2", "")}
 Q3 (What I Learned): {answers.get("q3", "")}
 Q4 (What I'd Do Differently): {answers.get("q4", "")}
+
+GROUNDING: {grounding or "(none retrieved)"}
+
+PRIOR_SESSIONS: {prior_sessions or "(none retrieved)"}
 """.strip())
 
     if need_premortem_inference:
@@ -192,13 +220,14 @@ W5: <one-line specific feedback>
 reference actual words from the answers.>
 ===RECOMMENDATIONS===
 <one bullet per dimension that scored below its max (skip maxed dimensions entirely).
-Recommendations may ONLY reference CONCEPTS, TICKETS, and DRILLS_OVERDUE given below --
-never invent a book, course, or tool. If every dimension is maxed, write exactly: NONE>
+Recommendations may ONLY reference CONCEPTS, TICKETS, DRILLS_OVERDUE, and GROUNDING given
+below -- never invent a book, course, or tool. If every dimension is maxed, write exactly: NONE>
 """
 
 
 def build_weekly_prompt(*, rubric_text: str, week: str, tickets: list[dict],
-                         homework_log: str, answers: dict) -> str:
+                         homework_log: str, answers: dict,
+                         grounding: str = "", prior_sessions: str = "") -> str:
     tickets_desc = "\n".join(f"- {t['ticket']}: {t['title']}" for t in tickets) or "(none this week)"
     concepts = sorted({c for t in tickets for c in t["concepts"]})
     parts = [rubric_text.strip(), f"""
@@ -217,6 +246,10 @@ W-Q1 (Patrón de la semana): {answers['w1']}
 W-Q2 (Brecha de skill): {answers['w2']}
 W-Q3 (Capability assertion): {answers['w3']}
 W-Q4 (Drills): {answers['w4']}
+
+GROUNDING: {grounding or "(none retrieved)"}
+
+PRIOR_SESSIONS: {prior_sessions or "(none retrieved)"}
 """.strip(), WEEKLY_OUTPUT_CONTRACT.strip()]
     return "\n\n".join(parts)
 

@@ -15,6 +15,26 @@ Frameworks applied:
 
 </purpose>
 
+<scope>
+
+This is a work-reflection and learning-science scoring tool, not a mental health or clinical
+tool. Score how someone reasons about their week of technical work. Never diagnose, never assess
+mental health, never offer therapeutic advice, and never treat a low score as evidence of a
+psychological condition — a 2/10 week is feedback on reflection quality, nothing else.
+
+If an answer describes something beyond ordinary work frustration — a mental health crisis,
+thoughts of self-harm, or anything suggesting the person needs professional support right now —
+stop scoring. Say so plainly, in one sentence, in the user's own language, and point them to a
+professional or a crisis line (e.g. 988 in the US, or the appropriate local resource) before
+anything else. Do not continue the rubric after that.
+
+Never reference the user's saved profile (`blockers`, `competing_commitment`, `motivation_type`,
+or anything else from `config.json`'s `user_profile`) unless this week's own answers bring it up.
+The profile exists to calibrate tone and difficulty — it is never a subject you raise unprompted
+during a routine weekly score.
+
+</scope>
+
 <input>
 
 The caller (weekly-review workflow) passes:
@@ -26,8 +46,27 @@ The caller (weekly-review workflow) passes:
 - `W_Q2` — user's answer to "¿Qué brecha de skill quedó expuesta?"
 - `W_Q3` — user's answer to "¿Qué puedes hacer esta semana que antes no podías?"
 - `W_Q4` — user's answer to drills — done or scheduled with specific date/time
+- `GROUNDING` — zero or more passages retrieved from growth-os's own corpus (original framework
+  writeups, cited to real sources) that may be relevant to this week. Can be empty.
+- `PRIOR_SESSIONS` — zero or more of this person's own past reflections/weeklies that may show a
+  recurring pattern. Can be empty.
 
 </input>
+
+<grounding>
+
+Cite a `GROUNDING` passage by framework name only when it's genuinely relevant to what this week
+actually surfaced — never fabricate a citation to a framework or source that wasn't given to you.
+An empty `GROUNDING` means say nothing about it; don't apologize for its absence.
+
+Reference a `PRIOR_SESSIONS` pattern only when it's genuinely the same recurring issue, not just
+surface-similar wording. "This is the third week naming the same gap" is a real signal; forcing a
+connection to a loosely related past session is not.
+
+A `GROUNDING` passage is also a valid resource to cite in the recommendations below — it is not
+an invented resource, since it was actually given to you. Still never invent one that wasn't.
+
+</grounding>
 
 <rubric>
 
@@ -176,10 +215,12 @@ Weekly review scored: {WEEK}
     If W-Q4 already has a specific day, W5 = 1 and skip this bullet.
 
   Never invent domain-specific resources (books, courses, tools) not already present
-  in the user's vault. The only resources to name are:
+  in the user's vault or in GROUNDING. The resources to name are:
   - concept slugs from CONCEPTS that were encountered this week
   - drills from DRILLS_OVERDUE
   - the user's own tickets from TICKETS (for W2 cross-analysis)
+  - a GROUNDING passage, cited by framework name, when it's genuinely relevant to the
+    gap being addressed
 ─────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -208,7 +249,7 @@ domain knowledge. A painter and a software engineer should get equally useful re
 - W5 calendar test is binary: specific day → 1, anything vague → 0.
 - Resource recommendations are ONLY for dimensions that scored below max.
 - Never recommend a resource for a dimension that scored max — it wastes the user's attention.
-- Never invent domain-specific books, courses, or tools. Recommendations come only from CONCEPTS, TICKETS, and DRILLS_OVERDUE passed by the caller.
+- Never invent domain-specific books, courses, or tools. Recommendations come only from CONCEPTS, TICKETS, DRILLS_OVERDUE, and GROUNDING passed by the caller.
 - If a concept slug from CONCEPTS matches the gap in W-Q2, name it explicitly in recommendations.
 - If drills are overdue but W-Q4 gives a specific schedule, W5 = 1 and do NOT add a drill reminder — it's already handled.
 - The framework is domain-agnostic. A painter, an architect, and a software engineer all get scored on the same W1–W5 dimensions.

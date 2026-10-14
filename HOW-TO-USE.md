@@ -160,8 +160,8 @@ Spanish need to match concepts or rubric language in English.
 > gotcha, seen firsthand on a Cashea laptop while building this.
 
 A completed `reflect` or `weekly` run is also written into a `sessions` collection
-automatically — nothing consumes it yet (that's Phase 4), but the data is there from
-day one instead of needing a backfill later.
+automatically. As of v3.0 Phase 4, both commands retrieve from it (and from the
+corpus below) before scoring — see "Grounding: the coach layer" further down.
 
 ### Corpus: shared (shipped) + personal (yours, local) — v3.0 Phase 3
 
@@ -196,6 +196,27 @@ same as a vault note.
 
 Nothing here replaces reading the actual book — a citation and a distilled
 explanation are a starting point, not a substitute for the real thing.
+
+### Grounding: the coach layer — v3.0 Phase 4
+
+`growth reflect` and `growth weekly` each query the corpus and the `sessions`
+collection (built from what the query text already computed for concept
+retrieval) before the scoring call, and pass what comes back as `GROUNDING`
+(corpus passages) and `PRIOR_SESSIONS` (your own past reflections/weeklies) in
+the prompt. The rubric (`agents/reflection-scorer.md` / `agents/weekly-reviewer.md`)
+is instructed to cite a framework by name only when a matching passage was
+actually retrieved, and to name a recurring pattern only when `PRIOR_SESSIONS`
+shows the same issue genuinely repeating — never fabricated. Both degrade to
+`(none retrieved)` gracefully on a fresh clone with nothing indexed yet, or
+when `sqlite-vec`/`fastembed` aren't installed (FTS5 keyword-only still finds
+a real hit whenever the query shares literal terms with a passage; cross-lingual
+semantic matching needs the vector extras from the Corpus section above).
+
+Both rubrics also carry a `<scope>` guardrail: this is a work-reflection tool,
+not a mental health one. A low score is feedback on reflection quality, never
+a diagnosis, and anything describing a real mental health crisis stops the
+rubric entirely in favor of one sentence pointing to a crisis line or a
+professional, in the user's own language.
 
 **`--agent <name>`** picks the backend, on every command except `onboard`:
 - `claude` (default) — shells out to `claude -p --output-format json --setting-sources ""`,

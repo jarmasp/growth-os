@@ -125,6 +125,11 @@ def cmd_reflect(args, cfg: dict) -> None:
             print("Cancelado.")
             return
 
+    # Same query basis feeds both retrieval calls below and concept_slugs_for further
+    # down -- the ticket is only "about" one thing, no reason to compute it twice.
+    retrieval_query = f"{short_description} {answers['q2']} {answers['q3']}"
+    grounding, prior_sessions = prompt.retrieve_grounding(retrieval_query)
+
     rubric = prompt.load_rubric()
     text_prompt = prompt.build_reflect_prompt(
         rubric_text=rubric,
@@ -134,6 +139,7 @@ def cmd_reflect(args, cfg: dict) -> None:
         answers=answers,
         need_premortem_inference=not draft_found,
         git_context=git_ctx,
+        grounding=grounding, prior_sessions=prior_sessions,
     )
 
     if args.agent == "print":
@@ -171,8 +177,7 @@ def cmd_reflect(args, cfg: dict) -> None:
     # Retrieval replaces the old ls-based scan: query the index with what the
     # ticket was actually about, now that the interview has given us real content
     # to search on, instead of handing the model every concept slug unfiltered.
-    concept_query = f"{short_description} {answers['q2']} {answers['q3']}"
-    concepts = ingest.concept_slugs_for(cfg, concept_query)
+    concepts = ingest.concept_slugs_for(cfg, retrieval_query)
 
     vault.write_reflection(
         cfg, path=target_path, branch=branch, ticket_id=ticket_id,
@@ -299,10 +304,14 @@ def cmd_weekly(args, cfg: dict) -> None:
     }
     print("\nGracias -- escribiendo la nota...")
 
+    retrieval_query = f"{answers['w1']} {answers['w2']} {answers['w3']}"
+    grounding, prior_sessions = prompt.retrieve_grounding(retrieval_query)
+
     rubric = prompt.load_weekly_rubric()
     text_prompt = prompt.build_weekly_prompt(
         rubric_text=rubric, week=weekly.week_id(), tickets=tickets,
         homework_log=homework_log, answers=answers,
+        grounding=grounding, prior_sessions=prior_sessions,
     )
 
     if args.agent == "print":
