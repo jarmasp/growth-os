@@ -476,6 +476,18 @@ def cmd_init(args) -> None:
     if dest.exists():
         print(f"{dest} already exists -- not overwriting. Edit it directly.")
         return
+    try:
+        existing = config.config_path()
+    except config.ConfigError:
+        pass
+    else:
+        # A legacy repo-root config.json (pre-v3.0 installs, e.g. growth-os-me's symlink
+        # setup) already resolves -- writing dest would silently take priority over it
+        # on every future run (config_path() checks CANONICAL_CONFIG first), switching
+        # an already-configured install to a blank example without anyone asking for that.
+        print(f"A config already resolves at {existing} -- using that one, not writing {dest}.")
+        print(f"(Delete or rename {existing} first if you actually want a fresh {dest}.)")
+        return
     example = config.GROWTH_OS_HOME / "config.example.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(example.read_text())

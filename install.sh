@@ -1,51 +1,49 @@
 #!/bin/bash
-# Growth OS — Install Claude Code commands globally
-# Creates symlinks from ~/.claude/commands/growth/ to growth-os/commands/growth/
-# Run once after cloning. Re-run to update after adding new commands.
+# Growth OS — install. Clone -> this script -> edit config -> `growth onboard`.
+# Claude Code / Cursor are optional extras (install-claude-code.sh, cursor/install-cursor.sh),
+# not required: `growth <command>` is a standalone CLI, stdlib only.
 
 set -e
 
 GROWTH_OS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDE_COMMANDS_DIR="$HOME/.claude/commands"
-GROWTH_COMMANDS_SRC="$GROWTH_OS_DIR/commands/growth"
-GROWTH_COMMANDS_DST="$CLAUDE_COMMANDS_DIR/growth"
 
-mkdir -p "$GROWTH_COMMANDS_DST"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 not found on PATH -- install Python 3.10+ first." >&2
+  exit 1
+fi
 
-# Remove old flat symlinks if upgrading from pre-namespace install
-for old in reflect concept weekly onboard; do
-  old_link="$CLAUDE_COMMANDS_DIR/$old.md"
-  if [ -L "$old_link" ]; then
-    echo "  removing old symlink: $old.md"
-    rm "$old_link"
-  fi
-done
+echo "Growth OS install ($GROWTH_OS_DIR)"
+echo ""
 
-echo "Installing Growth OS commands..."
+"$GROWTH_OS_DIR/growth" init
+echo ""
+"$GROWTH_OS_DIR/growth" doctor
 
-for cmd in "$GROWTH_COMMANDS_SRC"/*.md; do
-  filename=$(basename "$cmd")
-  target="$GROWTH_COMMANDS_DST/$filename"
-
-  if [ -L "$target" ]; then
-    echo "  updating symlink: growth/$filename"
-    ln -sf "$cmd" "$target"
-  elif [ -f "$target" ]; then
-    echo "  replacing file with symlink: growth/$filename"
-    rm "$target"
-    ln -sf "$cmd" "$target"
-  else
-    echo "  linking: growth/$filename"
-    ln -sf "$cmd" "$target"
-  fi
-done
+LOCAL_BIN="$HOME/.local/bin"
+case ":$PATH:" in
+  *":$LOCAL_BIN:"*)
+    mkdir -p "$LOCAL_BIN"
+    ln -sf "$GROWTH_OS_DIR/growth" "$LOCAL_BIN/growth"
+    echo ""
+    echo "Linked: $LOCAL_BIN/growth -> $GROWTH_OS_DIR/growth -- run 'growth' from anywhere."
+    ;;
+  *)
+    echo ""
+    echo "$LOCAL_BIN isn't on your PATH, so 'growth' wasn't linked there."
+    echo "Either add it to PATH and re-run this script, or just call $GROWTH_OS_DIR/growth directly."
+    ;;
+esac
 
 echo ""
-echo "Done. Commands available in Claude Code:"
-for cmd in "$GROWTH_COMMANDS_SRC"/*.md; do
-  filename=$(basename "$cmd" .md)
-  echo "  /growth:$filename"
-done
-
+echo "Next steps:"
+echo "  1. Edit your config (vault_root, vault_name, project_name) -- see the config path above."
+echo "  2. growth onboard"
+echo "  3. growth premortem / growth reflect on your next ticket"
 echo ""
-echo "Next step: run /growth:onboard in Claude Code to set up your profile and scaffold your Obsidian vault."
+echo "Optional (both plain pip installs, skip either and the CLI degrades gracefully):"
+echo "  pip install -r requirements-index.txt   # semantic search for growth index/search"
+echo "  pip install -r requirements-corpus.txt  # .epub/.pdf parsing for a personal corpus"
+echo ""
+echo "Optional, only if you also want /growth:* slash commands inside an editor:"
+echo "  bash $GROWTH_OS_DIR/install-claude-code.sh   # Claude Code"
+echo "  bash $GROWTH_OS_DIR/cursor/install-cursor.sh  # Cursor"

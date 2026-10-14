@@ -40,47 +40,24 @@ These are installed and configured by `/growth:onboard` — no manual setup need
 git clone git@github.com:jarmasp/growth-os.git ~/Documents/growth-os
 ```
 
-### 2. Install commands
+### 2. Install
 
 ```bash
 bash ~/Documents/growth-os/install.sh
 ```
 
-This symlinks `commands/growth/*.md` into `~/.claude/commands/growth/` so the slash commands
-are available globally in Claude Code as `/growth:*`.
-
-**Output:**
-```
-Installing Growth OS commands...
-  linking: growth/concept.md
-  linking: growth/onboard.md
-  linking: growth/reflect.md
-  linking: growth/weekly.md
-
-Done. Commands available in Claude Code:
-  /growth:concept
-  /growth:onboard
-  /growth:reflect
-  /growth:weekly
-
-Next step: run /growth:onboard in Claude Code to set up your profile and scaffold your Obsidian vault.
-```
-
-Using Cursor instead (or as well)?
-
-```bash
-bash ~/Documents/growth-os/cursor/install-cursor.sh
-```
-
-Symlinks the five skills, the `growth-os` rule, and the slash commands into `~/.cursor/`.
+Stdlib only — no `pip install` required for this step. It runs, in order:
+- `growth init` — writes `~/.growth-os/config.json` from `config.example.json` (skipped,
+  with a message, if a repo-root `config.json` already resolves — back-compat with the
+  pre-v3.0 layout, so this never silently shadows an existing setup)
+- `growth doctor` — reports which backends (`claude`/`codex`/custom) are on `PATH`, and
+  whether semantic search / epub-pdf parsing are available
+- a `growth` symlink into `~/.local/bin` if it's on your `PATH`
 
 ### 3. Configure your vault path
 
-Copy the example config, then edit it:
-
-```bash
-cp ~/Documents/growth-os/config.example.json ~/Documents/growth-os/config.json
-```
+Edit the config `install.sh` pointed you at (`~/.growth-os/config.json`, unless step 2
+found an existing repo-root one):
 
 ```json
 {
@@ -95,24 +72,39 @@ For example: `/Users/you/Documents/obsidian/personal/Work`.
 
 ### 4. Run onboarding
 
-Open Claude Code in any project directory and run:
-
-```
-/growth:onboard
+```bash
+growth onboard
 ```
 
-This runs a 5-phase adaptive interview and scaffolds your vault automatically.
+(No PATH link from step 2? Use `~/Documents/growth-os/growth onboard` instead — same for
+every command below.) This runs a 5-phase adaptive interview and scaffolds your vault
+automatically.
 
-### 5. Run premortem / reflect from a terminal
+### 5. Run premortem / reflect
 
 ```bash
-~/Documents/growth-os/growth init      # writes ~/.growth-os/config.json from the example
-~/Documents/growth-os/growth doctor    # sanity-checks config + which backends are on PATH
+growth premortem
+growth reflect
 ```
 
-`growth init` is optional if you already made `config.json` in step 3 — the CLI falls
-back to the repo-root one. Add `~/Documents/growth-os` to your `PATH` and these become
-plain `growth premortem` / `growth reflect`.
+### Optional: editor integration
+
+Everything above runs from a plain terminal — Claude Code / Cursor are never required.
+If you want `/growth:*` slash commands inside one anyway:
+
+```bash
+bash ~/Documents/growth-os/install-claude-code.sh   # Claude Code — symlinks into ~/.claude/commands/growth/
+bash ~/Documents/growth-os/cursor/install-cursor.sh # Cursor — symlinks skills/rule/commands into ~/.cursor/
+```
+
+Each slash command is a one-line pointer at the same CLI — nothing to keep in sync.
+
+### Multi-user
+
+Everything lives under your own `~/.growth-os/` (config, index, token logs) and your own
+`vault_root` — nothing shared, no server, no telemetry. A teammate cloning the same repo
+and running `install.sh` gets an entirely separate, isolated setup; nothing here assumes
+a single shared install.
 
 ---
 
@@ -443,8 +435,9 @@ cursor/
   rules/growth-os.mdc    — Cursor rule pointing at the workflows
   skills/growth-*/       — One skill per command, same orchestration as commands/growth/
 .planning/              — Milestone planning artifacts (gitignored)
-config.json             — Vault path and user settings
-install.sh              — Installs commands to ~/.claude/commands/growth/
+config.example.json     — Template for ~/.growth-os/config.json (written by `growth init`)
+install.sh              — Primary installer: growth init + growth doctor + PATH link
+install-claude-code.sh  — Optional: installs commands to ~/.claude/commands/growth/
 HOW-TO-USE.md           — This file
 README.md               — Quick project overview
 ```
