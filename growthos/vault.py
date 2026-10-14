@@ -15,7 +15,20 @@ from . import config
 
 def slugify(text: str) -> str:
     text = re.sub(r"[^a-zA-Z0-9]+", "-", text.strip().lower())
-    return text.strip("-")
+    # ponytail: free-text interview answers (ticket_id/branch) have no length
+    # contract -- cap here so no path built from a slug can exceed filesystem limits.
+    return text.strip("-")[:60].strip("-")
+
+
+def _demo_slugify():
+    rant = "no hay ticket, o mejor dicho, " + "hay demasiados tickets ya cerrados " * 10
+    assert len(slugify(rant)) <= 60
+    assert slugify("CASH-1234") == "cash-1234"
+
+
+if __name__ == "__main__":
+    _demo_slugify()
+    print("ok")
 
 
 def git(*args: str) -> str:
@@ -180,7 +193,7 @@ def format_failure_points(answer: str) -> str:
 
 
 def default_ticket_path(cfg: dict, ticket_id: str, branch: str) -> Path:
-    return config.vault_subdir(cfg, "tickets") / f"{ticket_id}-{slugify(branch)}.md"
+    return config.vault_subdir(cfg, "tickets") / f"{slugify(ticket_id)}-{slugify(branch)}.md"
 
 
 def write_premortem(path: Path, *, branch: str, ticket_id: str, short_description: str,
